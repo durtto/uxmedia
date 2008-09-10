@@ -86,9 +86,10 @@
     */
 
     Ext.ux.Media = function(config){
-        Ext.apply(this,config||{});
-        this.toString = this.mediaMarkup;
-        this.initMedia();
+
+             Ext.apply(this,config||{});
+             this.initMedia();
+
         };
 
     var ux = Ext.ux.Media;
@@ -466,28 +467,44 @@
              ,style    : {overflow:'auto'}
              ,src     : "@url"
         }
-        ,"VLC" : {
+
+        //VLC ActiveX Player -- Suffers the same fate as the Acrobat ActiveX Plugin
+        ,"VLC" : Ext.apply({
               tag      : 'object'
              ,cls      : 'x-media x-media-vlc'
              ,type     : "application/x-vlc-plugin"
              ,version  : "VideoLAN.VLCPlugin.2"
              ,pluginspage:"http://www.videolan.org"
-             ,data     : "@url"
-         }
+             ,events   : true
+             ,start    : false
+             ,params   : {
+                   Src        : "@url"
+                  ,MRL        : "@url"
+                  ,autoplay  :  "@start"
+                  ,ShowDisplay: "@controls"
+                  ,Volume     : '@volume'
+                  ,Autoloop   : "@loop"
+
+                }
+
+             },Ext.isIE?{
+                  classid :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
+                 ,CODEBASE :"http://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
+             }:false)
+
          ,"RDP" : Ext.apply({
               tag      : 'object'
              ,cls      : 'x-media x-media-rdp'
              ,type     : "application/rds"
              ,unsupportedText: "Remote Desktop Web Connection ActiveX control is required. <a target=\"_msd\" href=\"http://go.microsoft.com/fwlink/?linkid=44333\">Download it here</a>."
              ,params:{
-                  Server : '@url'
-                 ,Fullscreen : false
+                  Server         : '@url'
+                 ,Fullscreen     : false
                  ,StartConnected : false
-                 ,DesktopWidth : '@width'
-                 ,DesktopHeight : '@height'
-
-
+                 ,DesktopWidth   : '@width'
+                 ,DesktopHeight  : '@height'
              }
+
          },Ext.isIE?{
              classid :"CLSID:9059f30f-4eb1-4bd2-9fdc-36f43a218f4a"
             ,CODEBASE :"msrdp.cab#version=5,2,3790,0"
@@ -539,6 +556,8 @@
                ).init(this);
              }
 
+            //Inline rendering support for this and all subclasses
+            this.toString = this.mediaMarkup;
 
              /* mediarender Event is raised when the media has been inserted into the DOM.
               * The media however, may NOT be in a usable state when the event is raised.
