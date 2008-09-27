@@ -138,7 +138,7 @@
                }
                },Ext.isIE?{
                    classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
-                   ,codebase:"http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
                    ,type:'application/x-oleobject'
                    }:
                    {src:"@url"})
@@ -201,7 +201,7 @@
 
                 },Ext.isIE?
                     {classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
-                     codebase:"http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
+                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
                     }:
                     {data     : "@url"})
 
@@ -226,7 +226,7 @@
 
         },Ext.isIE?{
              classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
-            ,codebase:"http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0"
+            ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0"
             }:false)
 
          /* QT references:
@@ -261,7 +261,7 @@
 
                      },Ext.isIE?
                           { classid      :'clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B'
-                           ,codebase     :'http://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
+                           ,codebase     :"http" + ((Ext.isSecure) ? 's' : '') + '://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
 
                        }:
                        {
@@ -277,7 +277,7 @@
                   ,type     : "video/quicktime"
                   ,params   : {}
                   ,classid      :'clsid:CB927D12-4FF7-4a9e-A169-56E4B8A75598'
-                  ,codebase     :'http://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
+                  ,codebase     :"http" + ((Ext.isSecure) ? 's' : '') + '://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
                  }
 
         //WordPress Audio Player : http://wpaudioplayer.com/
@@ -518,7 +518,7 @@
     var pollReadyState = function(media, cb, readyRE){
         //synthesize a load event for DOMs that support object.readyState
         if(media && typeof media.readyState != 'undefined'){
-            (readyRE || stateRE).test(media.readyState) ? cb({type:'load'}) : pollReadyState.defer(10,null,[media,cb]);
+            (readyRE || stateRE).test(media.readyState) ? cb({type:'load'}) : pollReadyState.defer(10,null,arguments);
         }
     };
 
@@ -557,7 +557,7 @@
              }
 
             //Inline rendering support for this and all subclasses
-            this.toString = this.mediaMarkup;
+            this.toString = this.asMarkup;
 
              /* mediarender Event is raised when the media has been inserted into the DOM.
               * The media however, may NOT be in a usable state when the event is raised.
@@ -593,8 +593,9 @@
               v= typeof v === 'function'?v.call(v.scope||null):v;
               return Ext.value(v ,def);
          },
-
-         mediaMarkup : function(mediaCfg, width, height, ct){
+		
+          /* Normalize the mediaCfg to DOMHelper cfg */
+         prepareMedia : function(mediaCfg, width, height, ct){
 
              mediaCfg = mediaCfg ||this.mediaCfg;
 
@@ -611,7 +612,6 @@
                  var media = Ext.apply({}, this.getMediaType(this.assert(m.mediaType,false)) || false );
 
                  var params = Ext.apply(media.params||{},m.params || {});
-
 
                  for(var key in params){
 
@@ -643,10 +643,7 @@
                  m.height = this.assert(height || m.height || media.height || m.style.height, null);
                  m.width  = this.assert(width  || m.width  || media.width || m.style.width , null);
 
-
-
                  m = Ext.apply({tag:'object'},m,media);
-
 
                  //Convert element height and width to inline style to avoid issues with display:none;
                  if(m.height || m.autoSize)
@@ -659,14 +656,14 @@
                     Ext.apply(m.style, {
                       width :El.addUnits( m.autoSize ? '100%' : m.width ,El.prototype.defaultUnit)});
                  }
-
+				 
                  m.id || (m.id = Ext.id());
                  m.name = this.assert(m.name, m.id);
 
-                 var _macros= {
+                 m._macros= {
                    url       : m.url || ''
-                  ,height    : (/%$/.test(m.height)) ? m.height : parseInt(m.height,10)||100
-                  ,width     : (/%$/.test(m.width)) ? m.width : parseInt(m.width,10)||100
+                  ,height    : (/%$/.test(m.height)) ? m.height : parseInt(m.height,10)||null
+                  ,width     : (/%$/.test(m.width)) ? m.width : parseInt(m.width,10)||null
                   ,scripting : this.assert(m.scripting,false)
                   ,controls  : this.assert(m.controls,false)
                   ,scale     : this.assert(m.scale,1)
@@ -693,40 +690,50 @@
                  delete   m.listeners;
                  delete   m.height;
                  delete   m.width;
-
-
-                 return Ext.DomHelper.markup(m)
-                   .replace(/(%40url|@url)/g          ,_macros.url)
-                   .replace(/(%40start|@start)/g      ,_macros.start+'')
-                   .replace(/(%40controls|@controls)/g,_macros.controls+'')
-                   .replace(/(%40scale|@scale)/g      ,_macros.scale+'')
-                   .replace(/(%40status|@status)/g    ,_macros.status+'')
-                   .replace(/(%40id|@id)/g            ,_macros.id+'')
-                   .replace(/(%40loop|@loop)/g        ,_macros.loop+'')
-                   .replace(/(%40volume|@volume)/g    ,_macros.volume+'')
-                   .replace(/(%40scripting|@scripting)/g ,_macros.scripting+'')
-                   .replace(/(%40width|@width)/g      ,_macros.width+'')
-                   .replace(/(%40height|@height)/g    ,_macros.height+'');
-
-             }else{
+                 return m;
+              }else{
                  var unsup = this.assert(m.unsupportedText|| this.unsupportedText || media.unsupportedText,null);
                  unsup = unsup ? Ext.DomHelper.markup(unsup): null;
                  return String.format(unsup || 'Media Configuration/Plugin Error',' ',' ');
              }
-
+           },
+           
+           asMarkup  : function(mediaCfg){
+           	  return this.mediaMarkup(this.prepareMedia(mediaCfg));
+           },
+           
+           /**
+            * @return {String} the renderable markup of a passed normalized mediaCfg 
+            */
+           mediaMarkup : function(mediaCfg){
+           	mediaCfg = mediaCfg || this.mediaCfg;
+           	if(mediaCfg){
+           	     var _macros = mediaCfg._macros;
+           	     delete mediaCfg._macros;
+                 var m = Ext.DomHelper.markup(mediaCfg);
+                 if(_macros){
+                   var _m, n;	
+                 	for ( n in _macros){
+                 	  _m = _macros[n];
+                 	  if(_m !== null){
+                 	       m = m.replace(new RegExp('((%40|@)'+n+')','g'),_m+'');
+                 	  }
+                 	}    
+                   
+                  }
+				  return m;
+           	}
+     
          }
          //Private
          ,setMask  : function(el) {
-
              if(this.mediaMask && !this.mediaMask.enable){
                     el = Ext.get(el);
                     if(this.mediaMask = new Ext.ux.IntelliMask(el || this[this.mediaEl],
                        Ext.apply({fixElementForMedia:true},this.mediaMask))){
                             this.mediaMask.el.addClass('x-media-mask');
                       }
-
             }
-
 
          }
           /*
@@ -747,29 +754,40 @@
 
               if(ct){
                   this.lastCt = ct;
-                  var markup;
-
-                  if(mc && (markup = this.mediaMarkup(mc, w, h, ct))){
+                  if(mc && (mc = this.prepareMedia(mc, w, h, ct))){
                      this.setMask(ct);
-                     this.clearMedia();
-
-                     ct.update(markup);
+                    
+                   
                      if(this.mediaMask && this.autoMask){
                           this.mediaMask.show();
                      }
+                     this.clearMedia();
+                     
+					 this.writeMedia(mc, ct, domPosition || 'afterbegin');
 
                   }
               }
               this.onAfterMedia(ct);
 
-
           }
+          
+          /*Override if necessary to render to targeted container */
+          ,writeMedia : function(mediaCfg, container, domPosition ){
+          	  var ct = Ext.get(container);
+          	  if(ct){
+              	domPosition ? Ext.DomHelper.insertHtml(domPosition,ct.dom,this.mediaMarkup(mediaCfg))
+              	  :ct.update(this.mediaMarkup(mediaCfg));
+          	  }
+              	
+          }
+          
           //Remove an existing mediaObject from the DOM.
           ,clearMedia : function(){
             if(Ext.isReady && this.mediaObject){
+              this.mediaObject.ownerCt = null;
               try{
                 this.mediaObject.removeAllListeners();
-                this.mediaObject.remove();
+                this.mediaObject.remove(true,true);
               }catch(er){}
             }
             this.mediaObject = null;
@@ -781,15 +799,23 @@
 
             if( m && (mt = this.getMediaType(m.mediaType)) ){
                 m.autoSize = m.autoSize || mt.autoSize===true;
-
+				var autoSizeEl;
                 //Calculate parent container size for macros (if available)
-                if(m.autoSize && (ct = Ext.isReady?Ext.get(ct||this.lastCt):null)){
-                  m.height = ct.getHeight(true) || this.assert(m.height,'auto');
-                  m.width  = ct.getWidth(true)  || this.assert(m.width ,'auto');
+                if(m.autoSize && (autoSizeEl = Ext.isReady?
+                    //Are we in a layout ? autoSize to the container el.
+                    this.ownerCt ? this.getEl() :  Ext.get(ct||this.lastCt)
+                    :null)
+                      
+                 ){
+                  m.height = autoSizeEl.getHeight(true);
+                  m.width  = autoSizeEl.getWidth(true);
+                  
                 }
 
              }
-
+             this.assert(m.height,null);
+             this.assert(m.width ,null);
+             mediaCfg = m;
 
           },
           // Private
@@ -930,6 +956,8 @@
             this.clearMedia();
             Ext.destroy(this.mediaMask,this.loadMask);
             Ext.ux.MediaComponent.superclass.beforeDestroy.call(this);
+            this.lastCt = this.mediaObject = this.renderTo = this.applyTo = null;
+            
          },
          //private
         setAutoScroll   : function(){
@@ -960,14 +988,51 @@
         }
         ,onRender  : function(){
 
-              ux.Panel.superclass.onRender.apply(this, arguments);
-              this.onAfterRender();
+            ux.Panel.superclass.onRender.apply(this, arguments);
+            this.onAfterRender();
 
          }
-        ,beforeDestroy : function(){
+        /*,beforeDestroy : function(){
             this.clearMedia();
             ux.Panel.superclass.beforeDestroy.call(this);
-         }
+         } */
+           // private
+	    ,beforeDestroy : function(){
+	
+	        if(this.rendered){
+				 this.clearMedia();
+	             if(this.tools){
+	                for(var k in this.tools){
+	                      Ext.destroy(this.tools[k]);
+	                }
+	             }
+	
+	             if(this.header && this.headerAsText){
+	                var s;
+	                if( s=this.header.child('span')) s.remove();
+	                this.header.update('');
+	             }
+	
+	             Ext.each(['mediaMask','loadMask','topToolbar','bottomToolbar','header','footer','body','bwrap'],
+	                function(elName){
+	                  if(this[elName]){
+	                    if(typeof this[elName].destroy == 'function'){
+	                         this[elName].destroy();
+	                    } else { Ext.destroy(this[elName]); }
+	
+	                    this[elName] = null;
+	                    delete this[elName];
+	                  }
+	             },this);
+	        }
+	
+	        ux.Panel.superclass.beforeDestroy.call(this);
+	    },
+	    onDestroy : function(){
+	        //Yes, Panel.super (Component), since we're doing Panel cleanup beforeDestroy instead.
+	        Ext.Panel.superclass.onDestroy.call(this);
+	    }
+         
     });
 
     //Inherit the Media class interface
@@ -1010,7 +1075,7 @@
     Ext.onReady(function(){
         //Generate CSS Rules if not defined in markup
         var CSS = Ext.util.CSS, rules=[];
-        CSS.getRule('.x-media') || (rules.push('.x-media{width:100%;height:100%;display:block;overflow:none;outline:none;}'));
+        CSS.getRule('.x-media', true) || (rules.push('.x-media{width:100%;height:100%;display:block;overflow:none;outline:none;}'));
         CSS.getRule('.x-media-mask') || (rules.push('.x-media-mask{width:100%;height:100%;position:relative;zoom:1;}'));
 
         //default Rule for IMG:  h/w: auto;
@@ -1027,6 +1092,7 @@
 
         if(!!rules.length){
              CSS.createStyleSheet(rules.join(''));
+             CSS.refreshCache();
         }
 
     });
