@@ -36,7 +36,8 @@
 </div>
 <div id="background" class="x-hidden">
 <p>Welcome to version 2.0 of the <b>Ext.ux.Media</b> classes.</p>
-<h2>Warning</h2><p><i>Some content delivered in this demonstration may not be suitable for younger viewers.</i></p>
+<h2>Warning</h2>
+<p><i>Some content delivered in this demonstration may not be suitable for younger viewers.</i></p>
 
 <p>The base class ux.Media handles most of the heavy lifting with regards to rendering
 (thanks to Ext.DomHelper) the embedded <b>&lt;object&gt;</b> tags within:
@@ -50,7 +51,8 @@
 <p>The base Media class comes with over 16 media classes pre-defined, supporting the following media types, including:</p>
 <p><h4>PDF, HTML, Silverlight, MOV, Flash, OWC, QuickTime, RealVideo, Mp3, WAV, MIDI, PNG, JPEG, JP2, GIF, RDC </h4></p>
 
-<p><h2>Classes provided (xtype(s))</h2>
+<h2>Classes provided (xtype(s))</h2>
+<p>
 <ul class="list">
 <li>ux.Media (the base media class from which all others are derived)</li>
 <li>ux.MediaComponent  (media, uxmedia)</li>
@@ -60,15 +62,16 @@
 <li>ux.FlashComponent  (uxflash)</li>
 <li>ux.FlashPanel      (flashpanel)</li>
 <li>ux.FlashWindow</li>
- </ul>
+</ul>
 </p>
+
 <h2>Render Media <b>inline</b> in page markup.</h2>
 <p>You can now render any Media type (including derived classes)&nbsp;<span><script type="text/javascript">
-    document.write(String(new Ext.ux.Media({mediaCfg:{
-                             mediaType   : 'SWF'
-                            ,url    : 'clock.swf'
-                            ,id     :  'inlineClock'
-                            ,style: {display:'inline', width:'100px',height:'80px'}
+    document.write(mclock=new Ext.ux.Media.Flash({mediaCfg:{
+                             //mediaType   : 'SWF'
+                            url    : 'clock.swf'
+                            ,id     : 'inlineClock'
+                            ,style  : {display:'inline', width:'100px',height:'80px'}
                             ,start    : true
                             ,loop     : true
                             ,controls :false
@@ -77,11 +80,10 @@
                                ,scale     :'exactfit'
                                ,salign    :'t'
                             }
-                       }})));</script>&nbsp;</span><b>inline</b> in your page markup:
+                       }}));</script>&nbsp;</span><b>inline</b> in your page markup:
  <pre>
 &lt;span>&lt;script type="text/javascript">
        document.write(
-           String(
                new Ext.ux.Media(
                  {mediaCfg:{
                      mediaType   : 'SWF'
@@ -98,7 +100,7 @@
                       }
                   }
                  })
-          ));
+          );
 &lt;/script>&lt;/span></pre>
 </p>
  <h2>Creating a Media Window</h2>
@@ -114,7 +116,7 @@
            ,unsupportedText : 'Acrobat Viewer is not Installed'
            }
       });
-</pre>
+</pre></p>
 <h2>Extensible Media Classes</h2>
 <p>Adding additional media types (that you "find out about") to the base class is easy:
  <pre>
@@ -136,7 +138,9 @@ events -- passed on as standard Ext Events.
 <h2>Documentation</h2>
 <p>...will be thin for a bit, but study the demonstration source file <a href="mediademo.js" target="_srcview">(mediademo.js)</a></p>
 <h2>Links</h2>
+
 <a target="_ref" href="http://kb.adobe.com/selfservice/viewContent.do?externalId=tn_12701&sliceId=1">Flash Param Reference</a>
 </div>
+
 </body>
 </html>
