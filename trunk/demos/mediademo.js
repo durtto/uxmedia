@@ -13,7 +13,9 @@
     if(typeof console == 'undefined'){
         console = {
         log: Ext.debug?Ext.log:alert,
-        dir: Ext.debug?Ext.dump:alert
+        dir: Ext.debug?Ext.dump:alert,
+        info: Ext.debug?Ext.log:alert,
+        warn: Ext.debug?Ext.log:alert
         };
       }
 
@@ -98,7 +100,9 @@ var sampleNodes = [
                 }
             ,config:{
                  mediaType:'SWF'
-                ,url:'http://www.youtube.com/v/Jr8n0ww3pio&rel=1'
+
+                 //<object width="425" height="344"><param name="movie" value="http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1"></param><param name="allowFullScreen" value="true"></param><embed src="http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1" type="application/x-shockwave-flash" allowfullscreen="true" width="425" height="344"></embed></object>
+                ,url:'http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1'
                 ,autoSize:true
                 ,height : 355
                 ,width  : 425
@@ -193,6 +197,22 @@ var sampleNodes = [
 
                   }
                 }
+          },
+          {
+              text:'VLC Player'
+              ,id:'\/video\/vlc'
+              ,leaf:true
+              ,handler    : 'winView'
+              ,winCfg     : {_cls:'MediaWindow',height:300, width: 600, mediaMask:{msg:'Loading Player...',autoHide:3000}}
+              ,config:{
+                   mediaType  :'VLC'
+                  ,url        :'http://images.apple.com/movies/wb/i_am_legend/i_am_legend-tlr1_h.480.mov'
+                  ,autoSize : true
+                  ,id         :'vlcp'
+                  ,unsupportedText : not['VLC']
+                  ,controls   :true
+                  ,start      :true
+                  }
           }
         ]
     }
@@ -430,7 +450,7 @@ var sampleNodes = [
                            ,single:true
                         }
             ,config:{
-                 url        :'http://www.youtube.com/v/Jr8n0ww3pio&rel=1'
+                 url:'http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1'
                 ,width      :425
                 ,height     :355
                 ,controls   :true
@@ -459,7 +479,7 @@ var sampleNodes = [
                            ,single:true
                         }
             ,config:{
-                 url        :'http://www.youtube.com/v/Jr8n0ww3pio&rel=1'
+                 url:'http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1'
                 ,width      :425
                 ,height     :355
                 ,controls   :false
@@ -481,7 +501,7 @@ var sampleNodes = [
                          fscommand : function(panel,command,args){
 
                               Ext.DomHelper.append(panel.body,
-                                {tag:'p',html: 'fscommand received from ' +panel.SWFObject.id + ', command:' +command + ', args:'+args +
+                                {tag:'p',html: 'fscommand received from ' +panel.mediaObject.id + ', command:' +command + ', args:'+args +
                               //Echo it back
                               ', echoing back:' + panel.setVariable('JStoASviaSetVariable','echo:'+args)
                               });
@@ -527,9 +547,10 @@ var sampleNodes = [
 
                         flashinit: function(C, player){
                             var cbName = 'recorder_'+C.id,i;
-                            window[cbName] = function(state){this.setTitle(state.newstate);}.createDelegate(C);
+                            window[cbName] || (window[cbName] = function(state){this.setTitle(state.newstate);}.createDelegate(C));
+                            C.setTitle('JWPlayer 4.0 Reports Ready: ' + C.id);
+
                             with(player){
-                               C.setTitle('JWPlayer 4.0 Reports Ready: ' + player.id);
                                addModelListener("STATE",cbName);
                                sendEvent('PLAY','true');
                             }
@@ -538,7 +559,7 @@ var sampleNodes = [
                  }
                 ,tabTitle   : 'LongTail (JWPlayer 4.0)'
                 ,config:{
-                     url        : 'http://www.jeroenwijering.com/embed/player.swf'
+                     url        : 'http://www.longtailvideo.com/files/mediaplayer.swf'
                     ,autoSize   : true
                     ,volume     : 25
                     ,start      :false
@@ -549,9 +570,10 @@ var sampleNodes = [
                              ,allowfullscreen   : true
                              ,swliveconnect  : true
                              ,flashVars: {
-                                 autostart  :'@start'
-                                ,file       :'http://content.bitsontherun.com/videos/3ta6fhJQ.flv'
-                                ,duration   :  27
+                                 play  :'@start'
+                                ,file       :'http://web1.longtailadsolutions.com/longtailvideo.com/videos/8.flv'
+                                ,image      :'http://web1.longtailadsolutions.com/longtailvideo.com/videos/flv.jpg'  //pending JWP bug fix
+                                ,duration   : 27
                                 ,stretching :'fill'
                                 ,fullscreen : true
                                 ,volume     :'@volume'
