@@ -26,7 +26,7 @@
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
  Version:
-        1.0
+        2.0
            Addresses the Flash visibility/re-initialization issues for all browsers.
            Adds bi-directional fscommand support for all A-Grade browsers.
 
@@ -75,8 +75,6 @@
             ux.Flash.superclass.constructor.apply(this, arguments);
         },
 
-        SWFObject      : null,
-
         varsName       :'flashVars',
 
         hideMode       : 'nosize',
@@ -103,21 +101,25 @@
                 }
              },Ext.isIE?
                     {classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
-                     codebase:"http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
+                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
                     }:
                     {data     : "@url"}),
-
+                    
+		/** @private */
         getMediaType: function(){
              return this.mediaType;
         },
-        // private (called once by initComponent)
+        
+        /** @private 
+         *  (called once by initComponent)
+         */
         initMedia : function(){
 
             var mc = Ext.apply({}, this.mediaCfg||{});
             var requiredVersion = (this.requiredVersion = mc.requiredVersion || this.requiredVersion|| false ) ;
             var hasFlash  = !!(this.playerVersion = this.detectVersion());
             var hasRequired = hasFlash && (requiredVersion?this.assertVersion(requiredVersion):true);
-
+			
             var unsupportedText = this.assert(mc.unsupportedText || this.unsupportedText || (this.getMediaType()||{}).unsupportedText,null);
             if(unsupportedText){
                  unsupportedText = Ext.DomHelper.markup(unsupportedText);
@@ -125,17 +127,18 @@
                      (requiredVersion?' '+requiredVersion+' ':' '),
                      (this.playerVersion?' '+this.playerVersion+' ':' Not installed.'));
             }
-
+			mc.mediaType = "SWF";
+            
             if(!hasRequired ){
                 this.autoMask = false;
 
                 //Version check for the Flash Player that has the ability to start Player Product Install (6.0r65)
                 var canInstall = hasFlash && this.assertVersion('6.0.65');
-
                 if(canInstall && mc.installUrl){
 
                        mc =  mc.installDescriptor || {
-                             tag      : 'object'
+                       	   mediaType  : 'SWF'
+                            ,tag      : 'object'
                             ,cls      : 'x-media x-media-swf x-media-swfinstaller'
                             ,id       : 'SWFInstaller'
                             ,type     : 'application/x-shockwave-flash'
@@ -165,7 +168,7 @@
                 }
             }
 
-            /*
+            /**
             *  Sets up a eventSynch between the ActionScript environment
             *  and converts it's events into native Ext events.
             *  When this config option is true, binds an ExternalInterface definition
@@ -204,9 +207,7 @@
             delete mc.installRedirect;
             delete mc.installDescriptor;
             delete mc.eventSynch;
-
-
-            mc.mediaType = "SWF";
+           
             this.mediaCfg = mc;
 
             if(this.events){
@@ -243,11 +244,10 @@
                );
             }
             ux.Flash.superclass.initMedia.call(this);
-
         }
 
 
-        /*
+        /**
         * Asserts the desired version against the installed Flash Object version.
         * Acceptable parameter formats for versionMap:
         *
@@ -255,7 +255,7 @@
         *   9  or 9.1  (number)
         *   [9,0,43]  (array)
         *
-        *  Returns true if the desired version is => installed version
+        * @return {Boolean} true if the desired version is => installed version
         *  and false for all other conditions
         */
         ,assertVersion : function(versionMap){
@@ -284,15 +284,16 @@
                    }
             return false;
         },
-        /*
+        
+        /**
         * Flash version detection function
         * Modifed version of the detection strategy of SWFObject library : http://blog.deconcept.com/swfobject/
-        * returns a {major,minor,rev} version object or
+        * @returns {Object} {major,minor,rev} version object or
         * false if Flash is not installed or detection failed.
         */
         detectVersion : function(){
-            if(this.mediaVersion){
-                return this.mediaVersion;
+            if(ux.Flash.prototype.flashVersion ){
+                return this.mediaVersion = ux.Flash.prototype.flashVersion;
             }
             var version=false;
             var formatVersion = function(version){
@@ -331,10 +332,10 @@
                     version = sfo.description.replace(/([a-zA-Z]|\s)+/, "").replace(/(\s+r|\s+b[0-9]+)/, ".").split(".");
                 }
             }
-            return (this.mediaVersion = formatVersion(version));
+            return (this.mediaVersion = ux.Flash.prototype.flashVersion = formatVersion(version));
 
         }
-        //Private
+        /** @private */
         ,_applyFixes : function() {
             var o ;
              // Fix streaming media troubles for IE
@@ -343,23 +344,24 @@
 
              // Advice: do not attempt to remove the Component before onload has fired on IE/Win.
 
-            if(Ext.isIE && Ext.isWindows && (o =this.SWFObject)){
+            if(Ext.isIE && Ext.isWindows && (o =this.getInterface())){
                 o.style.display = 'none'; //hide it regardless of state
                 if(o.readyState == 4){
                     for (var x in o) {
-                        if (typeof o[x] == 'function') {
+                        if (x.toLowerCase() != 'flashvars' && typeof o[x] == 'function') {
                             o[x] = null;
                         }
                     }
                 }
-
+                o = null;
             }
 
         }
+        /** @private */
         ,onAfterMedia : function(ct){
 
               ux.Flash.superclass.onAfterMedia.apply(this,arguments);
-              this.SWFObject = this.getInterface();
+              //this.SWFObject = this.getInterface();
               if(this.mediaObject){
                   var id = this.mediaObject.id;
                   if(Ext.isIE ){
@@ -373,15 +375,15 @@
                     }
                   }else{
                       window[id+'_DoFSCommand'] || (window[id+'_DoFSCommand']= this.onfsCommand.createDelegate(this));
-
                   }
-
               }
-
          },
-        //Remove (safely) an existing mediaObject from the Component.
+         
+        /** Remove (safely) an existing mediaObject from the Component.
+         * 
+         */
         clearMedia  : function(){
-
+            
            //de-register fscommand hooks
            if(this.mediaObject){
                var id = this.mediaObject.id;
@@ -395,9 +397,13 @@
            }
 
            ux.Flash.superclass.clearMedia.call(this);
-           this.SWFObject = null;
+           
         },
-
+        
+		/**
+		 * Returns a reference to the embedded Flash object
+		 * @return {HTMLElement}
+		 */
         getSWFObject : function() {
             return this.getInterface();
         },
@@ -412,30 +418,38 @@
 
         },
 
-        //Use Flash's SetVariable method if available
-        //returns false if the function is not supported.
+        /**
+         * Use Flash's SetVariable method if available 
+         * @return {Boolean} 
+         * 
+         */
+        
         setVariable : function(vName, value){
             var fo = this.getInterface();
             if(fo && typeof fo.SetVariable != 'undefined'){
                 fo.SetVariable(vName,value);
                 return true;
             }
+            fo = null;
             return false;
 
         },
 
-        //Use Flash's SetVariable method if available
-        //returns false if the function is not supported.
+       /** Use Flash's GetVariable method if available
+        * @return {Mixed} returns undefined if the function is not supported.
+        */
         getVariable : function(vName){
             var fo = this.getInterface();
             if(fo && typeof fo.GetVariable != 'undefined'){
                 return fo.GetVariable(vName);
             }
+            fo = null;
             return undefined;
 
         },
 
-        /* this function is designed to be used when a player object notifies the browser
+        /** @private  
+         * this function is designed to be used when a player object notifies the browser
          * if its initialization state
          */
         onFlashInit  :  function(){
@@ -444,6 +458,7 @@
             this.fireEvent.defer(10,this,['flashinit',this, this.getInterface()]);
 
         },
+        
         /**
          * Dispatches events received from the SWF object (when defined by the eventSynch mediaConfig option).
          *
@@ -470,6 +485,8 @@
             }
         };
 
+   ux.Flash.prototype.detectVersion();
+   
     /* Generic Flash BoxComponent */
    Ext.ux.FlashComponent = Ext.extend(Ext.ux.MediaComponent,{
            ctype : "Ext.ux.FlashComponent",
@@ -517,5 +534,26 @@
             }
          }catch(ex){}
          return false;
+    };
+
+    /* This is likely unnecessary with this implementation, as Flash objects are removed as needed
+     * during the clearMedia method, but included to cleanup inline flash markup.
+     */	
+	if(Ext.isIE && Ext.isWindows && ux.Flash.prototype.flashVersion.major == 9) {
+	    window.attachEvent('onbeforeunload', function() {
+	    	__flash_unloadHandler = function() {};
+            __flash_savedUnloadHandler = function() {};
+	   
+            Ext.each(Ext.query('.x-media-swf'), function(item, index) {
+	            item.style.display = 'none';
+	            for (var x in item) {
+	                if (x.toLowerCase() != 'flashvars' && typeof o[x] == 'function') {
+	                    item[x] = null;
+	                }
+	            }
+	        });
+	    });
+	    
     }
+
 })();
