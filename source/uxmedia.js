@@ -5,9 +5,9 @@
  *        Ext.ux.MediaPanel     (xtype: mediapanel),
  *        Ext.ux.MediaWindow
  *
- * Version:  2.0
- * Author: Doug Hendricks. doug[always-At]theactivegroup.com
- * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ * @version  2.1
+ * @author Doug Hendricks. doug[always-At]theactivegroup.com
+ * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -23,6 +23,15 @@
  Commercial use is prohibited without a Commercial License. See http://licensing.theactivegroup.com.
 
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
+
+ Version   2.1  10/14/2008
+          Fixes:
+            Corrects missing unsupportedText markup rendering.
+            Corrects inline markup rendering.
+            Corrects autoSize height/width macro replacement.
+            Corrects mixed content warnings on SSL sites.
+          Adds:
+            loaded readyState class method for all media types and sub-classes.
 
  Version:  2.0
            Height/Width now honors inline style as well,
@@ -80,7 +89,6 @@
 
 (function(){
 
-
     /*
     * Base Media Class
     */
@@ -112,7 +120,7 @@
                   tag      : 'iframe'
                  ,cls      : 'x-media x-media-pdf-frame'
                  ,frameBorder : 0
-                 ,style    : {overflow:'none',width:'100%',height:'100%'}
+                 ,style    : {overflow:'none'}
                  ,src      : "@url"
                  ,autoSize :true
         }
@@ -205,7 +213,7 @@
                     }:
                     {data     : "@url"})
 
-
+        // JWP Reference : http://code.jeroenwijering.com/trac/wiki/FlashAPI
         ,"JWP" :  Ext.apply({
               tag      :'object'
              ,cls      : 'x-media x-media-swf x-media-flv'
@@ -213,6 +221,8 @@
              ,data     : "@url"
              ,loop     :  false
              ,start    :  false
+             //ExternalInterface bindings
+             ,boundExternals : ['sendEvent' , 'addModelListener', 'addControllerListener', 'addViewListener', 'getConfig', 'getPlaylist']
              ,params   : {
                  movie     : "@url"
                 ,flashVars : {
@@ -220,7 +230,7 @@
                               ,repeat   :'@loop'
                               ,height   :'@height'
                               ,width    :'@width'
-                              ,id       : '@id'
+                              ,id       :'@id'
                               }
                 }
 
@@ -288,6 +298,7 @@
                       ,data     : '@url'
                       ,start    : true
                       ,loop     : false
+                      ,boundExternals : ['open','close','setVolume','load']
                       ,params   : {
                            movie        : "@url"
                           ,width        :'@width'  //required
@@ -344,6 +355,7 @@
         ,"JPEG" : {
                   tag      : 'img'
                  ,cls      : 'x-media x-media-img x-media-jpeg'
+                 ,style    : {overflow:'none', display:'inline'}
                  ,src     : "@url"
         }
         ,"JP2" :{
@@ -515,12 +527,6 @@
     };
 
     var stateRE = /4$/i;
-    var pollReadyState = function(media, cb, readyRE){
-        //synthesize a load event for DOMs that support object.readyState
-        if(media && typeof media.readyState != 'undefined'){
-            (readyRE || stateRE).test(media.readyState) ? cb({type:'load'}) : pollReadyState.defer(10,null,arguments);
-        }
-    };
 
     if(parseFloat(Ext.version) < 2.1){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
@@ -531,7 +537,7 @@
          mediaVersion    : null,
          requiredVersion : null,
          unsupportedText : null,
-
+         _maxPoll        : 200,
 
          /* Component Plugins Interface
            extends the Component instance with ux.Media.* interfaces
@@ -572,6 +578,7 @@
                       */
 
                      'mediarender',
+
                       /**
                       * @event mediarender
                       * Fires when the mediaObject has reported a loaded state (IE, Opera Only)
@@ -593,7 +600,13 @@
               v= typeof v === 'function'?v.call(v.scope||null):v;
               return Ext.value(v ,def);
          },
-		
+
+         //Assert/cleanse ID.  Overridable by sub-classes
+         assertId : function(id, def){
+               id || (id = def || Ext.id());
+               return id;
+         },
+
           /* Normalize the mediaCfg to DOMHelper cfg */
          prepareMedia : function(mediaCfg, width, height, ct){
 
@@ -641,7 +654,7 @@
                  delete media.style;
 
                  m.height = this.assert(height || m.height || media.height || m.style.height, null);
-                 m.width  = this.assert(width  || m.width  || media.width || m.style.width , null);
+                 m.width  = this.assert(width  || m.width  || media.width || m.style.width ,null);
 
                  m = Ext.apply({tag:'object'},m,media);
 
@@ -656,9 +669,9 @@
                     Ext.apply(m.style, {
                       width :El.addUnits( m.autoSize ? '100%' : m.width ,El.prototype.defaultUnit)});
                  }
-				 
-                 m.id || (m.id = Ext.id());
-                 m.name = this.assert(m.name, m.id);
+
+                 m.id   = this.assertId(m.id, Ext.id());
+                 m.name = this.assertId(m.name, m.id);
 
                  m._macros= {
                    url       : m.url || ''
@@ -697,35 +710,37 @@
                  return String.format(unsup || 'Media Configuration/Plugin Error',' ',' ');
              }
            },
-           
-           asMarkup  : function(mediaCfg){
-           	  return this.mediaMarkup(this.prepareMedia(mediaCfg));
-           },
-           
+
            /**
-            * @return {String} the renderable markup of a passed normalized mediaCfg 
+            * @return {String} the renderable markup of a passed normalized mediaCfg
             */
+           asMarkup  : function(mediaCfg){
+              return this.mediaMarkup(this.prepareMedia(mediaCfg));
+           },
+
+
+           /** @private */
            mediaMarkup : function(mediaCfg){
-           	mediaCfg = mediaCfg || this.mediaCfg;
-           	if(mediaCfg){
-           	     var _macros = mediaCfg._macros;
-           	     delete mediaCfg._macros;
+            mediaCfg = mediaCfg || this.mediaCfg;
+            if(mediaCfg){
+                 var _macros = mediaCfg._macros;
+                 delete mediaCfg._macros;
                  var m = Ext.DomHelper.markup(mediaCfg);
                  if(_macros){
-                   var _m, n;	
-                 	for ( n in _macros){
-                 	  _m = _macros[n];
-                 	  if(_m !== null){
-                 	       m = m.replace(new RegExp('((%40|@)'+n+')','g'),_m+'');
-                 	  }
-                 	}    
-                   
+                   var _m, n;
+                    for ( n in _macros){
+                      _m = _macros[n];
+                      if(_m !== null){
+                           m = m.replace(new RegExp('((%40|@)'+n+')','g'),_m+'');
+                      }
+                    }
+
                   }
-				  return m;
-           	}
-     
+                  return m;
+            }
+
          }
-         //Private
+         /** @private */
          ,setMask  : function(el) {
              if(this.mediaMask && !this.mediaMask.enable){
                     el = Ext.get(el);
@@ -736,7 +751,7 @@
             }
 
          }
-          /*
+          /**
           *  This method updates the target Element with a new mediaCfg object,
           *  or supports a refresh of the target based on the current mediaCfg object
           *  This method may be invoked inline (in Markup) before the DOM is ready
@@ -756,31 +771,30 @@
                   this.lastCt = ct;
                   if(mc && (mc = this.prepareMedia(mc, w, h, ct))){
                      this.setMask(ct);
-                    
-                   
+
                      if(this.mediaMask && this.autoMask){
                           this.mediaMask.show();
                      }
                      this.clearMedia();
-                     
-					 this.writeMedia(mc, ct, domPosition || 'afterbegin');
+
+                     this.writeMedia(mc, ct, domPosition || 'afterbegin');
 
                   }
               }
               this.onAfterMedia(ct);
 
           }
-          
+
           /*Override if necessary to render to targeted container */
           ,writeMedia : function(mediaCfg, container, domPosition ){
-          	  var ct = Ext.get(container);
-          	  if(ct){
-              	domPosition ? Ext.DomHelper.insertHtml(domPosition,ct.dom,this.mediaMarkup(mediaCfg))
-              	  :ct.update(this.mediaMarkup(mediaCfg));
-          	  }
-              	
+              var ct = Ext.get(container);
+              if(ct){
+                domPosition ? Ext.DomHelper.insertHtml(domPosition,ct.dom,this.mediaMarkup(mediaCfg))
+                  :ct.update(this.mediaMarkup(mediaCfg));
+              }
+
           }
-          
+
           //Remove an existing mediaObject from the DOM.
           ,clearMedia : function(){
             if(Ext.isReady && this.mediaObject){
@@ -792,33 +806,31 @@
             }
             this.mediaObject = null;
           }
-
-          ,onBeforeMedia  : function(mediaCfg, ct, domPosition ){
+          /** @private */
+          ,onBeforeMedia  : function(mediaCfg, ct, domPosition, width, height){
 
             var m = mediaCfg || this.mediaCfg, mt;
 
             if( m && (mt = this.getMediaType(m.mediaType)) ){
                 m.autoSize = m.autoSize || mt.autoSize===true;
-				var autoSizeEl;
+                var autoSizeEl;
                 //Calculate parent container size for macros (if available)
                 if(m.autoSize && (autoSizeEl = Ext.isReady?
                     //Are we in a layout ? autoSize to the container el.
                     this.ownerCt ? this.getEl() :  Ext.get(ct||this.lastCt)
                     :null)
-                      
                  ){
-                  m.height = autoSizeEl.getHeight(true);
-                  m.width  = autoSizeEl.getWidth(true);
-                  
+                  m.height = this.autoHeight ? null : autoSizeEl.getHeight(true);
+                  m.width  = this.autoWidth ? null : autoSizeEl.getWidth(true);
                 }
 
              }
-             this.assert(m.height,null);
-             this.assert(m.width ,null);
+             this.assert(m.height,height);
+             this.assert(m.width ,width);
              mediaCfg = m;
 
           },
-          // Private
+          /** @private */
           // Media Load Handler, called when a mediaObject reports a loaded readystate
           onMediaLoad : function(e){
                if(e && e.type == 'load'){
@@ -826,22 +838,24 @@
                   if(this.mediaMask && this.autoMask){ this.mediaMask.hide(); }
                }
           },
+          /** @private */
           onAfterMedia   : function(ct){
 
                if(this.mediaCfg && ct && (this.mediaObject = ct.child('.x-media') )){
                    this.mediaObject.ownerCt = this;
 
                     //Load detection for non-<object> media (iframe, img)
-                   if(this.mediaCfg.tag !== 'object'){
+                   if(this.mediaObject.dom.tagName !== 'OBJECT'){
                       this.mediaObject.on({
                        load  :this.onMediaLoad
                       ,scope:this
                       ,single:true
                      });
+                   } else {
+                       //IE, Opera possibly others, support a readyState on <object>s
+                       this._countPoll = 0;
+                       this.pollReadyState( this.onMediaLoad.createDelegate(this,[{type:'load'}],0));
                    }
-
-                   //IE, Opera possibly others, support a readyState on <object>s
-                   pollReadyState(this.mediaObject.dom, this.onMediaLoad.createDelegate(this));
 
                    var L; //Reattach any DOM Listeners after rendering.
                    if(L = this.mediaCfg.listeners ||null){
@@ -851,9 +865,23 @@
 
 
                }
-           }
+              if(this.autoWidth || this.autoHeight){
+                this.syncSize();
+              }
+          },
 
-         ,getInterface  : function(){
+          /**  synthesize a load event for DOMs that support object.readyState
+           * @private
+           */
+        pollReadyState : function( cb, readyRE){
+
+            var media = this.getInterface();
+            if(media && typeof media.readyState != 'undefined'){
+                (readyRE || stateRE).test(media.readyState) ? cb() : arguments.callee.defer(10,this,arguments);
+            }
+         },
+
+         getInterface  : function(){
               return this.mediaObject?this.mediaObject.dom||null:null;
           }
 
@@ -876,48 +904,53 @@
 
     Ext.extend(mediaComponentAdapter, Object, {
 
-         hideMode      : !Ext.isIE?'nosize':'display'
+        hideMode      : !Ext.isIE?'nosize':'display',
 
-        ,animCollapse  :  Ext.enableFx && Ext.isIE
+        animCollapse  :  Ext.enableFx && Ext.isIE,
 
-        ,animFloat     :  Ext.enableFx && Ext.isIE
+        animFloat     :  Ext.enableFx && Ext.isIE,
 
-        ,visibilityCls : !Ext.isIE ?'x-hide-nosize':null
+        visibilityCls : !Ext.isIE ?'x-hide-nosize':null,
 
-        ,autoScroll    : true
+        autoScroll    : true,
 
-        ,shadow        : false
+        height           : 'auto',
+        width            : 'auto',
 
-        ,bodyStyle     : {position: 'relative'}
+        shadow        : false,
 
-        ,resizeMedia   : function(comp, w, h){
+        bodyStyle     : {position: 'relative'},
+
+        /** @private */
+        resizeMedia   : function(comp, w, h){
             var mc = this.mediaCfg;
 
-            if(mc && this.boxReady){
-
+            if(mc && this.boxReady && !!w && !!h){
                 // Ext.Window.resizer fires this event a second time
                 if(arguments.length > 3 && (!this.mediaObject || mc.renderOnResize )){
                     this.refreshMedia(this[this.mediaEl]);
                 }
             }
 
-         }
+         },
 
-        ,onAfterRender: function(visModeTargets){
+        refreshMedia  : function(target){
+            if(this.mediaCfg) {this.renderMedia(null,target);}
+        },
+        /** @private */
+        onAfterRender: function(visModeTargets){
 
             if(this.mediaCfg.renderOnResize ){
                 this.on('resize', this.resizeMedia, this);
             }else{
                 this.renderMedia(this.mediaCfg,this[this.mediaEl] || this.getEl());
             }
-        }
 
-        ,doAutoLoad : Ext.emptyFn
+        },
 
-        ,refreshMedia  : function(target){
-            if(this.mediaCfg) {this.renderMedia(null,target);}
-        }
-        ,mediaMask  : false
+        doAutoLoad : Ext.emptyFn,
+
+        mediaMask  : false
 
     });
 
@@ -931,6 +964,7 @@
         getId           : function(){
             return this.id || (this.id = "media-comp" + (++Ext.Component.AUTO_ID));
         },
+        /** @private */
         initComponent   : function(){
             this.visModeTargets  = [this.actionMode];
             this.initMedia();
@@ -938,28 +972,23 @@
             Ext.ux.MediaComponent.superclass.initComponent.apply(this,arguments);
         },
 
-        onRender  : function(){
-
-              Ext.ux.MediaComponent.superclass.onRender.apply(this, arguments);
-              this.onAfterRender();
-
-        },
-
+        /** @private */
         afterRender     :  function(ct){
 
             this.setAutoScroll();
+            this.onAfterRender();
             Ext.ux.MediaComponent.superclass.afterRender.apply(this,arguments);
 
-
         },
+        /** @private */
         beforeDestroy   : function(){
             this.clearMedia();
             Ext.destroy(this.mediaMask,this.loadMask);
             Ext.ux.MediaComponent.superclass.beforeDestroy.call(this);
             this.lastCt = this.mediaObject = this.renderTo = this.applyTo = null;
-            
+
          },
-         //private
+         /** @private */
         setAutoScroll   : function(){
             if(this.rendered && this.autoScroll){
                 this.getEl().setOverflow('auto');
@@ -975,64 +1004,32 @@
 
     ux.Panel = Ext.extend( Ext.Panel, {
 
-         ctype         : "Ext.ux.Media.Panel"
-        ,cls           : "x-media-panel"
-        ,mediaEl       : 'body'   //the containing target element for the media
+        ctype         : "Ext.ux.Media.Panel",
+        cls           : "x-media-panel",
+        mediaEl       : 'body',   //the containing target element for the media
 
-        ,initComponent : function(){
+        /** @private */
+        initComponent : function(){
             this.visModeTargets  = [this.collapseEl,this.floating? null: this.actionMode];
             this.initMedia();
             this.html = this.contentEl = this.items = null;
 
             ux.Panel.superclass.initComponent.call(this);
-        }
-        ,onRender  : function(){
+        },
+        /** @private */
+        onRender  : function(){
 
             ux.Panel.superclass.onRender.apply(this, arguments);
             this.onAfterRender();
 
-         }
-        /*,beforeDestroy : function(){
+         },
+        /** @private */
+        beforeDestroy : function(){
+
             this.clearMedia();
             ux.Panel.superclass.beforeDestroy.call(this);
-         } */
-           // private
-	    ,beforeDestroy : function(){
-	
-	        if(this.rendered){
-				 this.clearMedia();
-	             if(this.tools){
-	                for(var k in this.tools){
-	                      Ext.destroy(this.tools[k]);
-	                }
-	             }
-	
-	             if(this.header && this.headerAsText){
-	                var s;
-	                if( s=this.header.child('span')) s.remove();
-	                this.header.update('');
-	             }
-	
-	             Ext.each(['mediaMask','loadMask','topToolbar','bottomToolbar','header','footer','body','bwrap'],
-	                function(elName){
-	                  if(this[elName]){
-	                    if(typeof this[elName].destroy == 'function'){
-	                         this[elName].destroy();
-	                    } else { Ext.destroy(this[elName]); }
-	
-	                    this[elName] = null;
-	                    delete this[elName];
-	                  }
-	             },this);
-	        }
-	
-	        ux.Panel.superclass.beforeDestroy.call(this);
-	    },
-	    onDestroy : function(){
-	        //Yes, Panel.super (Component), since we're doing Panel cleanup beforeDestroy instead.
-	        Ext.Panel.superclass.onDestroy.call(this);
-	    }
-         
+        }
+
     });
 
     //Inherit the Media class interface
@@ -1042,23 +1039,26 @@
 
     ux.Window = Ext.extend( Ext.Window ,{
 
-         cls           : "x-media-window"
-        ,ctype         : "Ext.ux.Media.Window"
-        ,mediaEl       : 'body'   //the containing target element for the media
-        ,initComponent : function(){
+        cls           : "x-media-window",
+        ctype         : "Ext.ux.Media.Window",
+        mediaEl       : 'body',   //the containing target element for the media
+        initComponent : function(){
 
             this.visModeTargets  = [this.collapseEl,this.floating? null: this.actionMode];
             this.initMedia();
             this.html = this.contentEl = this.items = null;
 
             ux.Window.superclass.initComponent.call(this);
-        }
+        },
+        /** @private */
+        onRender  : function(){
 
-        ,onRender  : function(){
            ux.Window.superclass.onRender.apply(this, arguments);
+
            this.onAfterRender();
-         }
-         ,beforeDestroy : function(){
+         },
+         /** @private */
+         beforeDestroy : function(){
             this.clearMedia();
             ux.Window.superclass.beforeDestroy.call(this);
          }
@@ -1079,7 +1079,7 @@
         CSS.getRule('.x-media-mask') || (rules.push('.x-media-mask{width:100%;height:100%;position:relative;zoom:1;}'));
 
         //default Rule for IMG:  h/w: auto;
-        CSS.getRule('.x-media-img') || (rules.push('.x-media-img{background-color:transparent;width:auto;height:auto;zoom:1;}'));
+        CSS.getRule('.x-media-img') || (rules.push('.x-media-img{background-color:transparent;width:auto;height:auto;}'));
 
         /* These two important rule solves many of the <object/iframe>.reInit issues encountered
          * when setting display:none on an upstream(parent) element (on all Browsers except IE).
@@ -1437,3 +1437,28 @@
      };
 
 })();
+if (Ext.provide) {
+    Ext.provide('uxmedia');
+}
+
+Ext.applyIf(Array.prototype, {
+
+    /*
+     * Fix for IE/Opera, which does not seem to include the map
+     * function on Array's
+     */
+    map : function(fun, scope) {
+        var len = this.length;
+        if (typeof fun != "function") {
+            throw new TypeError();
+        }
+        var res = new Array(len);
+
+        for (var i = 0; i < len; i++) {
+            if (i in this) {
+                res[i] = fun.call(scope || this, this[i], i, this);
+            }
+        }
+        return res;
+    }
+});

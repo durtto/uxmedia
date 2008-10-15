@@ -104,13 +104,21 @@
                      codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
                     }:
                     {data     : "@url"}),
-                    
-		/** @private */
+
+        /** @private */
         getMediaType: function(){
              return this.mediaType;
         },
-        
-        /** @private 
+
+        /** @private
+         * Remove the following characters to permit Flash ExternalInterface: +-/\*.
+         */
+        assertId : function(id, def){
+             id || (id = def || Ext.id());
+             return id.replace(/\+|-|\\|\/|\*/g,'');
+         },
+
+        /** @private
          *  (called once by initComponent)
          */
         initMedia : function(){
@@ -119,7 +127,7 @@
             var requiredVersion = (this.requiredVersion = mc.requiredVersion || this.requiredVersion|| false ) ;
             var hasFlash  = !!(this.playerVersion = this.detectVersion());
             var hasRequired = hasFlash && (requiredVersion?this.assertVersion(requiredVersion):true);
-			
+
             var unsupportedText = this.assert(mc.unsupportedText || this.unsupportedText || (this.getMediaType()||{}).unsupportedText,null);
             if(unsupportedText){
                  unsupportedText = Ext.DomHelper.markup(unsupportedText);
@@ -127,8 +135,8 @@
                      (requiredVersion?' '+requiredVersion+' ':' '),
                      (this.playerVersion?' '+this.playerVersion+' ':' Not installed.'));
             }
-			mc.mediaType = "SWF";
-            
+            mc.mediaType = "SWF";
+
             if(!hasRequired ){
                 this.autoMask = false;
 
@@ -137,7 +145,7 @@
                 if(canInstall && mc.installUrl){
 
                        mc =  mc.installDescriptor || {
-                       	   mediaType  : 'SWF'
+                           mediaType  : 'SWF'
                             ,tag      : 'object'
                             ,cls      : 'x-media x-media-swf x-media-swfinstaller'
                             ,id       : 'SWFInstaller'
@@ -202,12 +210,15 @@
                 })[this.varsName] = Ext.applyIf(vars,eventVars);
             }
 
+            this.bindExternals(mc.boundExternals);
+
             delete mc.requiredVersion;
             delete mc.installUrl;
             delete mc.installRedirect;
             delete mc.installDescriptor;
             delete mc.eventSynch;
-           
+            delete mc.boundExternals;
+
             this.mediaCfg = mc;
 
             if(this.events){
@@ -284,7 +295,7 @@
                    }
             return false;
         },
-        
+
         /**
         * Flash version detection function
         * Modifed version of the detection strategy of SWFObject library : http://blog.deconcept.com/swfobject/
@@ -353,6 +364,7 @@
                         }
                     }
                 }
+
                 o = null;
             }
 
@@ -378,12 +390,12 @@
                   }
               }
          },
-         
+
         /** Remove (safely) an existing mediaObject from the Component.
-         * 
+         *
          */
         clearMedia  : function(){
-            
+
            //de-register fscommand hooks
            if(this.mediaObject){
                var id = this.mediaObject.id;
@@ -397,13 +409,13 @@
            }
 
            ux.Flash.superclass.clearMedia.call(this);
-           
+
         },
-        
-		/**
-		 * Returns a reference to the embedded Flash object
-		 * @return {HTMLElement}
-		 */
+
+        /**
+         * Returns a reference to the embedded Flash object
+         * @return {HTMLElement}
+         */
         getSWFObject : function() {
             return this.getInterface();
         },
@@ -419,11 +431,11 @@
         },
 
         /**
-         * Use Flash's SetVariable method if available 
-         * @return {Boolean} 
-         * 
+         * Use Flash's SetVariable method if available
+         * @return {Boolean}
+         *
          */
-        
+
         setVariable : function(vName, value){
             var fo = this.getInterface();
             if(fo && typeof fo.SetVariable != 'undefined'){
@@ -448,17 +460,71 @@
 
         },
 
-        /** @private  
-         * this function is designed to be used when a player object notifies the browser
+        /** Helper method used to bind Flash ExternalInterface methods to the Component level
+         * @param {String|Array} methods A single method name or Array of Methods to bind.
+         * @example flashObj.bindExternals(['Play', 'Stop', 'Rewind']);
+         *  flashMediaObj.Play();
+
+         * Note: ExternalInterface bindings are maintained on the Component, not the DOM Element to prevent
+         * corruption during Flash refreshes which occur during DOM reflow.
+         */
+        bindExternals : function(methods){
+
+            if(methods && this.flashVersion.major >= 8){
+                methods = new Array().concat(methods);
+            }else{
+                return;
+            }
+            Ext.each(methods,function(method){
+                //Do not overwrite existing function with the same name.
+               this[method] || (this[method] = function(){
+                      return this.invoke.apply(this,[method].concat(Array.prototype.slice.call(arguments,0)));
+               }.createDelegate(this));
+
+            },this);
+        },
+
+        /** Invoke a Flash ExternalInterface method
+         * @param {String} method Method Name to invoke
+         * @param {Mixed} arguments (Optional)  (1-n) method arguments.
+         */
+        invoke   : function(method /* , optional arguments, .... */ ){
+
+            return method && this.getInterface()? Ext.decode(this.getInterface().CallFunction([
+                            '<invoke name="'+method+'" returntype="javascript">',
+                            '<arguments>',
+                            (Array.prototype.slice.call(arguments,1)).map(function(arg){ return __flash__toXML(arg);}).join(''),
+                            '</arguments>',
+                '</invoke>'].join(''))):null;
+
+        },
+
+        /** @private
+         * this function is designed to be used when a Flashplayer player object notifies the browser
          * if its initialization state
          */
         onFlashInit  :  function(){
 
             if(this.mediaMask && this.autoMask){this.mediaMask.hide();}
-            this.fireEvent.defer(10,this,['flashinit',this, this.getInterface()]);
+            this.fireEvent.defer(300,this,['flashinit',this, this.getInterface()]);
+
 
         },
-        
+
+        /**  Flash Specific Method to synthesize a load event
+         * @private
+         */
+        pollReadyState : function(cb, readyRE){
+            var media;
+            if(media= this.getInterface()){
+                if(typeof media.PercentLoaded != 'undefined' && media.PercentLoaded() == 100){ cb(); return; }
+                if( this._countPoll++ < this._maxPoll) {
+                    arguments.callee.defer(10,this,arguments);
+                }
+            }
+
+         },
+
         /**
          * Dispatches events received from the SWF object (when defined by the eventSynch mediaConfig option).
          *
@@ -486,7 +552,7 @@
         };
 
    ux.Flash.prototype.detectVersion();
-   
+
     /* Generic Flash BoxComponent */
    Ext.ux.FlashComponent = Ext.extend(Ext.ux.MediaComponent,{
            ctype : "Ext.ux.FlashComponent",
@@ -538,22 +604,23 @@
 
     /* This is likely unnecessary with this implementation, as Flash objects are removed as needed
      * during the clearMedia method, but included to cleanup inline flash markup.
-     */	
-	if(Ext.isIE && Ext.isWindows && ux.Flash.prototype.flashVersion.major == 9) {
-	    window.attachEvent('onbeforeunload', function() {
-	    	__flash_unloadHandler = function() {};
+     */
+    if(Ext.isIE && Ext.isWindows && ux.Flash.prototype.flashVersion.major == 9) {
+        window.attachEvent('onbeforeunload', function() {
+            __flash_unloadHandler = function() {};
             __flash_savedUnloadHandler = function() {};
-	   
+
             Ext.each(Ext.query('.x-media-swf'), function(item, index) {
-	            item.style.display = 'none';
-	            for (var x in item) {
-	                if (x.toLowerCase() != 'flashvars' && typeof o[x] == 'function') {
-	                    item[x] = null;
-	                }
-	            }
-	        });
-	    });
-	    
+                item.style.display = 'none';
+                for (var x in item) {
+                    if (x.toLowerCase() != 'flashvars' && typeof o[x] == 'function') {
+                        item[x] = null;
+                    }
+                }
+            });
+        });
+
     }
 
 })();
+
