@@ -9,6 +9,45 @@
  ************************************************************************************
 */
 
+
+var supr = Ext.Element.prototype;
+Ext.override(Ext.Layer, {
+    hideAction : function(){
+        this.visible = false;
+        if(this.useDisplay === true){
+            this.setDisplayed(false);
+        }else{
+            supr.setLeftTop.call(this, -10000, -10000);
+        }
+    }
+});
+Ext.override(Ext.Panel,
+{
+   onShow: function()
+   {
+      if (this.floating)
+      {
+         this.el.lastLT = this.lastLT;
+         this.el.show();
+         delete this.el.lastLT
+      }
+      else
+         Ext.Panel.superclass.onShow.call(this);
+   },
+
+   onHide: function()
+   {
+      if (this.floating)
+      {
+         this.lastLT = [this.el.getLeft(), this.el.getTop()];
+         this.el.hide();
+      }
+      else
+         Ext.Panel.superclass.onHide.call(this);
+   }
+}
+);
+
 //Ext syntax sugar and FB console emulation
     if(typeof console == 'undefined'){
         console = {
@@ -100,8 +139,6 @@ var sampleNodes = [
                 }
             ,config:{
                  mediaType:'SWF'
-
-                 //<object width="425" height="344"><param name="movie" value="http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1"></param><param name="allowFullScreen" value="true"></param><embed src="http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1" type="application/x-shockwave-flash" allowfullscreen="true" width="425" height="344"></embed></object>
                 ,url:'http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1'
                 ,autoSize:true
                 ,height : 355
@@ -276,15 +313,16 @@ var sampleNodes = [
               ,leaf     :true
               ,mediaClass :'flashpanel'
               ,config:{
-                        mediaType:'SWF'
-                       ,url         :'WPplayer.swf'
+                        mediaType:'WPMP3'
+                       ,url         :'player.swf'
                        ,start       :'yes'
                        ,controls    : 'yes'
                        ,loop        : 'no'
                        ,volume     : 20
-                       ,unsupportedText : not['QT']
+
                        ,height      :44
                        ,width       :280
+                       ,boundExternals : ['open','close','setVolume','load']
                        ,params : {
                             wmode:'transparent'
                            ,allowscriptaccess : 'always'
@@ -295,10 +333,10 @@ var sampleNodes = [
                               ,enablejavascript : "@scripting"
                               ,loop         :'@loop'
                               ,transparentbg:'yes'
-                              ,animation    : 'yes'
+                              ,animation    : 'no'
                               ,initialvolume:'@volume'
                               ,width        :'@width'  //required
-                              ,encode       : 'no' //mp3 urls will be encoded
+                              ,encode       : 'no' //mp3 urls will noy be encoded
                               ,soundFile    : 'sit.mp3'   //required
                            }
                         }
@@ -418,11 +456,29 @@ var sampleNodes = [
           text  :'Jpeg'
          ,id    :'\/image\/boat'
          ,leaf  :true
-         ,mediaClass :'mediapanel'
+         ,mediaClass :'mediawindow'
+         ,winClass: 'MediaWindow'
          ,tabTitle: 'Boating Accidents Happen'
+         ,handler    : 'winView'
+         ,winCfg     : {
+                x : 100,
+                y: 100,
+                resizable : false,
+                shadow   :  true,
+                mediaMask: false,
+                autoHeight : true,
+                autoWidth : !Ext.isIE,
+                width : 480,
+                constrainHeader : false,
+                constrain : false,
+                autoScroll : true
+
+              }
          ,config:{ mediaType    :'JPEG'
                   ,url          :'how boating accidents happen.jpg'
                   ,id           :'accidents'
+                  ,style        :{position:'relative'}
+                  ,autoSize  : false
 
                }
          }
@@ -527,7 +583,7 @@ var sampleNodes = [
          ]
 
     },
-    {
+    {     // Reference : http://code.jeroenwijering.com/trac/wiki/FlashAPI
            text     :'JW Players/Viewers'
           ,id       :'\/JW'
           ,leaf     :false
@@ -545,35 +601,39 @@ var sampleNodes = [
                     autoMask : true,  //set true here because this player provides feedback when ready
                     listeners:{
 
-                        flashinit: function(C, player){
-                            var cbName = 'recorder_'+C.id,i;
-                            window[cbName] || (window[cbName] = function(state){this.setTitle(state.newstate);}.createDelegate(C));
-                            C.setTitle('JWPlayer 4.0 Reports Ready: ' + C.id);
+                        mediaload: function(C, player){
+                            //construct a status callback for this instance
+                            var cbName = 'recorder_'+player.id;
+                            window[cbName] = function(state){this.setTitle(state.newstate);}.createDelegate(C);
+                            C.setTitle('JWPlayer 4.1 Reports Ready: '+player.id);
 
-                            with(player){
+                            //Using Flash ExternalInterface (boundExternals)
+                            with(C){
                                addModelListener("STATE",cbName);
                                sendEvent('PLAY','true');
                             }
                         },delay : 100
                     }
                  }
-                ,tabTitle   : 'LongTail (JWPlayer 4.0)'
+                ,tabTitle   : 'LongTail (JWPlayer 4.1)'
                 ,config:{
-                     url        : 'http://www.longtailvideo.com/files/mediaplayer.swf'
+                    mediaType  : 'JWP'
+                    ,url        : 'JWplayer.swf'
                     ,autoSize   : true
                     ,volume     : 25
                     ,start      :false
                     ,loop       :false
                     ,scripting  :'always'
+                    //ExternalInterface bindings
+                    ,boundExternals : ['sendEvent' , 'addModelListener', 'addControllerListener', 'addViewListener', 'getConfig', 'getPlaylist']
                     ,params:{
                               wmode    :'opaque'
                              ,allowfullscreen   : true
                              ,swliveconnect  : true
                              ,flashVars: {
-                                 play  :'@start'
-                                ,file       :'http://web1.longtailadsolutions.com/longtailvideo.com/videos/8.flv'
-                                ,image      :'http://web1.longtailadsolutions.com/longtailvideo.com/videos/flv.jpg'  //pending JWP bug fix
-                                ,duration   : 27
+                                 play       :'@start'
+                                ,file       :'http://content.bitsontherun.com/videos/6AJT5nbx.m4v'
+                                ,duration   : 30
                                 ,stretching :'fill'
                                 ,fullscreen : true
                                 ,volume     :'@volume'
@@ -756,19 +816,19 @@ var Demo = {
 
                 vwin = new Ext.ux[winClass]
                            (Ext.apply(
-                            {id         :'viewWin'
-                            ,height     : 430
-                            ,width      : 430
-                            ,mediaMask : {autoHide : 2000}  //default 2 second auto-hide mask
-                            ,minHeight  :(parseInt(mConfig.height,10)||0)+32
-                            ,collapsible:true
-                            ,constrainHeader : true
-                            ,renderTo   :Ext.getBody()
-                            ,title      : (NA.tabTitle || NA.text || "Who  knows?")
-                            ,mediaCfg   : mConfig
-                            ,listeners  : NA.listeners || false
-                            ,tools: [{id:'gear',handler:function(e,t,p){p.renderMedia();},
-                                    qtip: {text:'Refresh the Media'}}]
+                                {id         :'viewWin'
+                                ,height     : NA.winCfg.autoHeight? null : 430
+                                ,width      : NA.winCfg.autoWidth? null :430
+                                ,mediaMask  : {autoHide : 2000}  //default 2 second auto-hide mask
+                                ,minHeight  : (parseInt(mConfig.height,10)||0)+32
+                                ,collapsible: true
+                                ,constrain : true
+                                ,renderTo   : Ext.getBody()
+                                ,title      : (NA.tabTitle || NA.text || "Who knows?")
+                                ,mediaCfg   : mConfig
+                                ,listeners  : NA.listeners || false
+                                ,tools: [{id:'gear',handler:function(e,t,p){p.renderMedia();},
+                                        qtip: {text:'Refresh the Media'}}]
                             }
                             ,NA.winCfg || {})
                             );
