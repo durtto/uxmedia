@@ -1,0 +1,167 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Open Flash Charts-2 with ux.MediaFlash 2.1</title>
+<link rel="stylesheet" type="text/css" href="../../resources/css/ext-all.css" />
+
+    <script type="text/javascript" src="../../adapter/ext/ext-base.js"></script>
+    <script type="text/javascript" src="../../ext-all.js"></script>
+    <script type="text/javascript" src="uxmedia.js"></script>
+    <script type="text/javascript" src="uxflash.js"></script>
+    <script type="text/javascript" src="uxofc.js"></script>
+
+
+    <!-- Common Styles for the examples -->
+    <link rel="stylesheet" type="text/css" href="../shared/examples.css" />
+
+<script type="text/javascript">
+
+    //Ext syntax sugar and FB console emulation
+    if(typeof console == 'undefined'){
+        console = {
+        log: Ext.debug?Ext.log:alert,
+        dir: Ext.debug?Ext.dump:alert
+        };
+      }
+
+    Ext.apply(window,{
+        $ : Ext.get
+       ,$A: Ext.value
+       ,$C : Ext.getCmp
+       ,$D : Ext.getDom
+       ,$$ : Ext.select
+       ,$Q : Ext.query
+       ,$on: Ext.EventManager.on
+       ,$ready : Ext.onReady
+       ,$l : console.log
+       ,$cd: console.dir
+       ,$for : typeof forEach != 'undefined'? forEach : Ext.each
+
+    });
+
+
+    Ext.lib.Ajax.forceActiveX = true;
+    Ext.BLANK_IMAGE_URL = '../../resources/images/default/s.gif';
+
+
+    Ext.onReady(function(){
+
+     Ext.QuickTips.init();
+     Ext.QuickTips.getQuickTip().interceptTitles = true;
+
+     Ext.QuickTips.enable();
+
+
+  var getTools = function(){
+   return [
+           //chart reload support
+           {id:'refresh',
+            handler:function(e,t,p){
+                p.chartData? p.loadData(): p.refreshMedia();
+              },
+             qtip: {text:'Refresh the Chart'}  },
+
+            //save as image support
+            {id:'save',
+             handler:function(e,t,p){
+                p.saveAsImage('ofc_upload_image.php?name=chart.jpg' );
+              },
+            qtip: {text:'Save Chart as Image'}
+           }
+        ];
+   };
+
+  var chartEvents = {
+           //mousemove:function(){console.log(['mousemove',arguments])}
+          };
+
+    var saved_image_url = 'tmp-upload-images/chart.jpg';
+
+    var data = { "title":{ "text":"Many data lines", "style":"{font-size: 30px;}" }, "elements":[ { "type": "line", "colour": "#9933CC", "text": "Page views", "width": 2, "font-size": 10, "dot-size": 6, "values" : [15,18,19,14,17,18,15,18,17] }, { "type": "line_dot", "colour": "#CC3399", "width": 2, "text": "Downloads", "font-size": 10, "dot-size": 5, "values" : [10,12,14,9,12,13,10,13,12] }, { "type": "line_hollow", "colour": "#80a033", "width": 8, "text": "Bounces", "font-size": 10, "dot-size": 8, "values" : [5,7,9,7,4,6,1,2,5] } ], "y_axis":{ "max": 20 }, "x_axis":{ "steps": 2, "labels": ["January","February","March","April","May","June","July","August","September"] } };
+
+    view = new Ext.ux.OFCWindow({
+           x : 100,
+           y : 100,
+            height   : 300,
+            width   : 350,
+            title       : 'Open Flash Chart Window',
+            collapsible : true,
+            tools       : getTools(),
+
+            ofcCfg   :
+               { id       : 'chart2',
+                 autoSize : true,
+
+                 /** this is not required, but included here so that saved images
+                 *   reflect the current Window size
+                 */
+                 renderOnResize : true,
+
+                 listeners: chartEvents
+
+               }
+            ,mediaMask : {msg:'Loading Chart Object'}
+            ,loadMask  : {msg:'Gathering Chart Data'}
+            ,autoMask  : true
+            ,listeners :{
+                chartload: function(comp, obj){
+                    //console.log('SWFReady');
+                },
+
+                // Notification that the image save to server is complete
+                imagesaved : function(comp, SWF){
+                    this.previews || (this.previews = new Array() );
+                    var prev;
+                    //publish image to a new Window
+                    this.previews.push(
+
+                      prev = new Ext.Window({
+                         title: 'Saved Image: '+saved_image_url,
+                         autoHeight : true,
+                         autoWidth : !Ext.isIE,   //IE Hates autoWidth
+                         width  : this.getSize().width,  //for IE
+                         constrain : true,
+                         bodyCfg : {tag:'img',
+                                 cls:'x-window-body',
+                                 src: saved_image_url+'?_cb='+new Date().getTime(),
+                                 style:{width: 'auto', height: 'auto'}
+                              }
+                         })
+                     );
+                     prev.show( view.getEl().child('.x-tool-save') );
+                },
+
+                destroy : function(){
+                  Ext.destroy.apply(Ext, this.previews || [] );
+                }
+
+            }
+            ,id         :'demoOFC'
+            ,chartURL   : 'open-flash-chart.swf'
+
+            /* Chart data loading options */
+
+            ,chartData  : data  //initial load - pre-defined JSON series
+
+            //,dataURL  : 'data-files/data-3.txt'  // SWF-Managed remote request in JSON format
+            //,dataFn     : 'view.onDataRequest'   // named function returning initial JSON string
+            //,autoLoad   :'data-files/data-3.txt' // let Ext.ux.Chart.OFC autoLoad do the same.
+
+  });
+
+  view.show();
+
+  Ext.EventManager.on(window,   "beforeunload",  function(){
+       Ext.destroy( view, Ext.QuickTips.getQuickTip() );
+       } ,window ,{single:true});
+
+});
+</script>
+<style type="text/css"> .x-window-header{position:relative;} </style>
+</head>
+<body>
+<div id="about">
+For more on Open Flash Charts 2, visit <a href="http://teethgrinder.co.uk/open-flash-chart-2/index.php" target="_blank">teethgrinder.co.uk: Open Flash Chart 2</a>
+</div>
+</body>
+</html>
