@@ -1,0 +1,151 @@
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>ux.Fusion Charts with ux.MediaFlash 2.0</title>
+<link rel="stylesheet" type="text/css" href="../../resources/css/ext-all.css" />
+
+
+    <script type="text/javascript" src="../../adapter/ext/ext-base.js"></script>
+    <script type="text/javascript" src="../../ext-all.js"></script>
+    <script type="text/javascript" src="uxmedia.js"></script>
+    <script type="text/javascript" src="uxflash.js"></script>
+    <script type="text/javascript" src="uxfusion.js"></script>
+
+
+    <!-- Common Styles for the examples -->
+    <link rel="stylesheet" type="text/css" href="../shared/examples.css" />
+
+<script type="text/javascript">
+if(typeof console == 'undefined'){
+    console = {
+    log: Ext.debug?Ext.log:alert,
+    dir: Ext.debug?Ext.dump:alert
+    };
+  }
+
+Ext.apply(window,{
+    $ : Ext.get
+   ,$A: Ext.value
+   ,$C : Ext.getCmp
+   ,$D : Ext.getDom
+   ,$$ : Ext.select
+   ,$Q : Ext.query
+   ,$on: Ext.EventManager.on
+   ,$ready : Ext.onReady
+   ,$l : console.log
+   ,$cd: console.dir
+   ,$for : typeof forEach != 'undefined'? forEach : Ext.each
+
+});
+
+Ext.lib.Ajax.forceActiveX = true;
+Ext.BLANK_IMAGE_URL = '../../resources/images/default/s.gif';
+
+Ext.onReady(function(){
+
+     Ext.QuickTips.init();
+     Ext.QuickTips.getQuickTip().interceptTitles = true;
+
+     Ext.QuickTips.enable();
+
+  var getTools = function(){
+      return [{id:'refresh', handler:function(e,t,p){ p.refreshMedia();},qtip: {text:'Refresh the Chart'}  },
+             {id:'print', handler:function(e,t,p){ p.print();},qtip: {text:'Print the Chart'}  }
+        ];
+    };
+
+  var chartEvents = {
+           //'mousemove':function(){console.log(['mousemove',arguments])}
+          };
+
+  view = new Ext.ux.FusionWindow({
+
+            height      : 600,
+            width       : 350,
+            x           : 570,
+            title       : 'ux.FusionWindow:',
+            collapsible : true,
+            maximizable : true,
+            tools       : getTools(),
+            constrainHeader : true,
+            fusionCfg   :{ id   : 'chart2'
+                          ,listeners: chartEvents
+                          ,params:{
+                              wmode:'opaque'
+                          }
+                         }
+            ,mediaMask : {msg:'Loading Chart Object'}
+            ,loadMask  : {msg:'Gathering Chart Data'}
+            ,autoMask  : true
+            ,listeners :{
+                       show  : function(p){
+                           if(p.floating)p.setPosition(p.x||10,p.y||10);
+                           }
+                      ,chartload : function(p,obj){
+                          p.setTitle(p.title.split(":")[0]+': Loaded.');
+                          }
+                      ,chartrender : function(p,obj){
+                          p.setTitle(p.title.split(":")[0]+': Rendered.');
+                          }
+            }
+            ,id         :'demoFusion'
+            ,chartURL   : 'Column3D.swf'
+            , dataURL  :'Column3D.xml' //let the chartObj load it
+            //,autoLoad   :'Column3D.xml'  //let Ext autoLoad do the same.
+  });
+
+  panel = new Ext.ux.FusionPanel({
+       title       : 'ux.FusionPanel:',
+       collapsible : true,
+       renderTo    : Ext.getBody(),
+       floating:false,
+       fusionCfg   :{ id   : 'chart1'
+                     ,listeners: chartEvents  //DOM listeners for the chart Object itself
+                     ,params : {
+                        flashVars: {
+                           debugMode : 0
+                           }
+                      }
+                  },
+       autoScroll : true,
+       id       : 'chartpanel',
+       chartURL : 'Pie3D.swf',
+       dataURL  : 'Column3D.xml',
+       mediaMask  : {msg:'Loading Chart Object'},
+       autoMask  : true,
+       width     : 500,
+       height    : 400,
+       listeners :{
+           show  : function(p){
+               if(p.floating)p.setPosition(p.x||10,p.y||10);
+               }
+           ,chartload : function(p,obj){
+               p.setTitle(p.title.split(":")[0]+': Loaded.');
+               }
+           ,chartrender : function(p,obj){
+               p.setTitle(p.title.split(":")[0]+': Rendered.');
+               }
+       },
+       tools     : getTools()
+
+  });
+
+
+  view.show();
+  panel.show();
+
+  Ext.EventManager.on(window,   "beforeunload",  function(){
+       Ext.destroy( view, panel, Ext.QuickTips.getQuickTip());
+       } ,window ,{single:true});
+
+});
+</script>
+</head>
+<body>
+<script type="text/javascript" src="../shared/examples.js"></script>
+<div id="aboutFusion">
+For more on FusionCharts visit <a href="http://www.fusioncharts.com/" target="_blank">fusioncharts.com</a>
+</div>
+</body>
+</html>
