@@ -603,8 +603,8 @@
 
          //Assert/cleanse ID.  Overridable by sub-classes
          assertId : function(id, def){
-               id || (id = def || Ext.id());
-               return id;
+             id || (id = def || Ext.id());
+             return id;
          },
 
           /* Normalize the mediaCfg to DOMHelper cfg */
@@ -670,7 +670,7 @@
                       width :El.addUnits( m.autoSize ? '100%' : m.width ,El.prototype.defaultUnit)});
                  }
 
-                 m.id   = this.assertId(m.id, Ext.id());
+                 m.id   = this.assertId(m.id);
                  m.name = this.assertId(m.name, m.id);
 
                  m._macros= {
@@ -750,14 +750,15 @@
                       }
             }
 
-         }
+         },
+
           /**
           *  This method updates the target Element with a new mediaCfg object,
           *  or supports a refresh of the target based on the current mediaCfg object
           *  This method may be invoked inline (in Markup) before the DOM is ready
           *  param position indicate the DomHeper position for Element insertion (ie 'afterbegin' the default)
           */
-          ,renderMedia : function(mediaCfg, ct, domPosition , w , h){
+          renderMedia : function(mediaCfg, ct, domPosition , w , h){
               if(!Ext.isReady){
                   Ext.onReady(this.renderMedia.createDelegate(this,Array.prototype.slice.call(arguments,0)));
                   return;
@@ -783,20 +784,20 @@
               }
               this.onAfterMedia(ct);
 
-          }
+          },
 
           /*Override if necessary to render to targeted container */
-          ,writeMedia : function(mediaCfg, container, domPosition ){
+          writeMedia : function(mediaCfg, container, domPosition ){
               var ct = Ext.get(container);
               if(ct){
                 domPosition ? Ext.DomHelper.insertHtml(domPosition,ct.dom,this.mediaMarkup(mediaCfg))
                   :ct.update(this.mediaMarkup(mediaCfg));
               }
 
-          }
+          },
 
           //Remove an existing mediaObject from the DOM.
-          ,clearMedia : function(){
+          clearMedia : function(){
             if(Ext.isReady && this.mediaObject){
               this.mediaObject.ownerCt = null;
               try{
@@ -805,9 +806,10 @@
               }catch(er){}
             }
             this.mediaObject = null;
-          }
+          },
+
           /** @private */
-          ,onBeforeMedia  : function(mediaCfg, ct, domPosition, width, height){
+          onBeforeMedia  : function(mediaCfg, ct, domPosition, width, height){
 
             var m = mediaCfg || this.mediaCfg, mt;
 
@@ -873,7 +875,7 @@
           /**  synthesize a load event for DOMs that support object.readyState
            * @private
            */
-        pollReadyState : function( cb, readyRE){
+         pollReadyState : function( cb, readyRE){
 
             var media = this.getInterface();
             if(media && typeof media.readyState != 'undefined'){
@@ -1029,6 +1031,7 @@
             this.clearMedia();
             ux.Panel.superclass.beforeDestroy.call(this);
         }
+
 
     });
 
