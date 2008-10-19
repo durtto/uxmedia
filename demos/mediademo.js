@@ -10,43 +10,71 @@
 */
 
 
-var supr = Ext.Element.prototype;
-Ext.override(Ext.Layer, {
-    hideAction : function(){
-        this.visible = false;
-        if(this.useDisplay === true){
-            this.setDisplayed(false);
-        }else{
-            supr.setLeftTop.call(this, -10000, -10000);
-        }
-    }
-});
-Ext.override(Ext.Panel,
-{
-   onShow: function()
-   {
-      if (this.floating)
-      {
-         this.el.lastLT = this.lastLT;
-         this.el.show();
-         delete this.el.lastLT
-      }
-      else
-         Ext.Panel.superclass.onShow.call(this);
-   },
+//Highly recommended for use with complex/Flash Ext.Components
+Ext.override( Ext.Element , {
 
-   onHide: function()
-   {
-      if (this.floating)
-      {
-         this.lastLT = [this.el.getLeft(), this.el.getTop()];
-         this.el.hide();
+  /**
+  * Removes this element from the DOM and deletes it from the cache
+  * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
+  * @param {Boolean} deep (optional) Perform a deep cleanse of all nested childNodes as well.
+  */
+
+  remove : function(cleanse, deep){
+      if(this.dom){
+        this.removeAllListeners();    //remove any Ext-defined DOM listeners
+        if(cleanse){ this.cleanse(true, deep); }
+        Ext.removeNode(this.dom);
+        this.dom = null;  //clear ANY DOM references
+        delete this.dom;
       }
-      else
-         Ext.Panel.superclass.onHide.call(this);
-   }
-}
-);
+    },
+
+    /**
+     * Deep cleansing childNode Removal
+     * @param {Boolean} forceReclean (optional) By default the element
+     * keeps track if it has been cleansed already so
+     * you can call this over and over. However, if you update the element and
+     * need to force a reclean, you can pass true.
+     * @param {Boolean} deep (optional) Perform a deep cleanse of all childNodes as well.
+     */
+    cleanse : function(forceReclean, deep){
+        if(this.isCleansed && forceReclean !== true){
+            return this;
+        }
+
+        var d = this.dom, n = d.firstChild, nx;
+         while(d && n){
+             nx = n.nextSibling;
+             if(deep){
+                     Ext.fly(n).cleanse(forceReclean, deep);
+                     }
+             Ext.removeNode(n);
+             n = nx;
+         }
+         this.isCleansed = true;
+         return this;
+     }
+});
+
+Ext.removeNode =  Ext.isIE ? function(n){
+            var d = document.createElement('div'); //the original closure held a reference till reload as well.
+            if(n && n.tagName != 'BODY'){
+                    var d = document.createElement('div');
+                    d.appendChild(n);
+                    //d.innerHTML = '';  //either works equally well
+                    d.removeChild(n);
+                    delete Ext.Element.cache[n.id];  //clear out any Ext reference from the Elcache
+                    d = null;  //just dump the scratch DIV reference here.
+            }
+
+        } :
+        function(n){
+            if(n && n.parentNode && n.tagName != 'BODY'){
+                n.parentNode.removeChild(n);
+                delete Ext.Element.cache[n.id];
+            }
+        };
+
 
 //Ext syntax sugar and FB console emulation
     if(typeof console == 'undefined'){
