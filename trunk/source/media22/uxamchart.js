@@ -1,9 +1,9 @@
 /* global Ext */
-/*
+/**
  * @class Ext.ux.Chart.amChart
- * @version 1.0a
+ * @version 1.0
  * @author Doug Hendricks. doug[always-At]theactivegroup.com
- * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -28,6 +28,7 @@
      along with this program.  If not, see < http://www.gnu.org/licenses/gpl.html>.
 
    Donations are welcomed: http://donate.theactivegroup.com
+
    Commercial use is prohibited without a Commercial License. See http://licensing.theactivegroup.com.
 
  Component Config Options:
@@ -73,6 +74,11 @@
 
     var amchartAdapter = Ext.extend( chart.FlashAdapter, {
 
+       /**
+        * @cfg {String|Float} requiredVersion The required Flash version necessary to support this Chart object.
+        * @default "8"
+        */
+       requiredVersion : 8,
 
        /** @private */
        initMedia   : function(){
@@ -157,7 +163,7 @@
 
                           params  : {
                               wmode     :'transparent',
-                              scale     :'exactfit',
+                              //scale     :'exactfit',
                               scale       : null,
                               salign      : null
                                }
@@ -166,7 +172,7 @@
         setDataMethod : 'setData',
 
         /** @private called just prior to rendering the media */
-         onBeforeMedia: function(){
+        onBeforeMedia: function(){
 
          /* assemble a compatible mediaCfg for use with the defined Chart SWF variables */
           var mc = this.mediaCfg;
@@ -187,15 +193,18 @@
 
           amchartAdapter.superclass.onBeforeMedia.call(this);
 
-
+          //parse any current additional settings to add redraw and time_stamping
           var re = /(?:<settings([^>]*)?>)((\n|\r|.)*?)(?:<\/settings>)/ig;
           var match = re.exec(mc.params[this.varsName]["additional_chart_settings"]||'');
 
           var extras= match && match[2]?[match[2]]:[];
           if(mc.autoSize){
-              extras.push('<redraw>true</redraw>'); }
+              extras.push('<redraw>true</redraw>');
+              this.animCollapse = false;  //amChart has trouble with resizing after Ext anim effects on IE.
+              }
           if(this.disableCaching){
-              extras.push('<add_time_stamp>true</add_time_stamp>'); }
+              extras.push('<add_time_stamp>true</add_time_stamp>');
+              }
 
           if(!!extras.length){
              mc.params[this.varsName]["additional_chart_settings"]= '<settings>'+extras.join('')+'</settings>';
@@ -245,7 +254,7 @@
       'amRolledOver', 'amClickedOn', 'amRolledOverEvent', 'amClickedOnEvent', 'amGetZoom'],
 
       function(fnName){
-        var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^am/,'')],0);
+        var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^am/i,'')],0);
         window[fnName] = typeof window[fnName] == 'function' ? window[fnName].createInterceptor(cb): cb ;
 
      });

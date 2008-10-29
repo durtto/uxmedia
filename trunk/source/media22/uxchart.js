@@ -158,7 +158,7 @@
      setDataURL  : function(url,immediate){ },
 
      /**
-      * Loads this Chart immediately with XML content returned from an XHR call.
+      * Loads this Chart immediately with content returned from an XHR call.
       * @param {Object/String/Function} config A config object containing any of the following options:
        <pre><code>
         panel.chartAutoLoad ({
@@ -189,7 +189,7 @@
                 return this;
            }
 
-           var method , cfg, callerScope,timeout,disableCaching ;
+           var method , cfg, callerScope,timeout,disableCaching, listeners ;
 
 
            if(typeof url === "object"){ // must be config object
@@ -201,6 +201,7 @@
                method = cfg.method || 'GET';
                disableCaching = cfg.disableCaching || this.disableCaching;
                timeout = cfg.timeout || 30;
+               listeners = cfg.listeners || null;
            }
 
 
@@ -234,7 +235,8 @@
                }
            });
 
-           new (o.connectionClass || Ext.data.Connection)().request(o);
+           new (o.connectionClass || Ext.data.Connection)
+                  ({listeners:listeners}).request(o);
 
            return this;
 
