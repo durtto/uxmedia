@@ -1,13 +1,6 @@
-/* global Ext */
-/*
- * @class Ext.ux.Media,
- *        Ext.ux.MediaComponent (xtype: media),
- *        Ext.ux.MediaPanel     (xtype: mediapanel),
- *        Ext.ux.MediaWindow
+
+/* global Ext
  *
- * @version  2.1
- * @author Doug Hendricks. doug[always-At]theactivegroup.com
- * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -24,14 +17,14 @@
 
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
- Version   2.1  10/14/2008
+ Version   2.1  11/11/2008
           Fixes:
             Corrects missing unsupportedText markup rendering.
             Corrects inline markup rendering.
             Corrects autoSize height/width macro replacement.
             Corrects mixed content warnings on SSL sites.
           Adds:
-            loaded readyState class method for all media types and sub-classes.
+            loaded readyState detection for all media types and sub-classes.
 
  Version:  2.0
            Height/Width now honors inline style as well,
@@ -40,7 +33,7 @@
            Added px unit assertion for strict DTDs.
            Final Quicktime config.
            Adds new PDF(Iframe), Remote Desktop Connection, Silverlight, Office Web Connect-XLS (IE),
-                Powerpoint, Wordpress player profiles.
+                Powerpoint, Wordpress player mediaType profiles.
 
 
  Version:  Rc1
@@ -86,528 +79,124 @@
 
 */
 
+Ext.removeNode =  Ext.isIE ? function(n){
+            var d = document.createElement('div'); //the original closure held a reference till reload as well.
+            if(n && n.tagName != 'BODY'){
+                    var d = document.createElement('div');
+                    d.appendChild(n);
+                    //d.innerHTML = '';  //either works equally well
+                    d.removeChild(n);
+                    delete Ext.Element.cache[n.id];  //clear out any Ext reference from the Elcache
+                    d = null;  //just dump the scratch DIV reference here.
+            }
+
+        } :
+        function(n){
+            if(n && n.parentNode && n.tagName != 'BODY'){
+                n.parentNode.removeChild(n);
+                delete Ext.Element.cache[n.id];
+            }
+        };
+
 
 (function(){
 
-    /*
+   /**
+    *
+    * @class Ext.ux.Media
+    * @version 2.1
+    * @author Doug Hendricks. doug[always-At]theactivegroup.com
+    * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+    * @constructor
+    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+    * @desc
     * Base Media Class
+    * Used primarily for rendering a mediaCfg for use with inline markup.
     */
 
     Ext.ux.Media = function(config){
-
-             Ext.apply(this,config||{});
-             this.initMedia();
-
-        };
-
-    var ux = Ext.ux.Media;
-
-    ux.mediaTypes =
-     {
-       "PDF" : Ext.apply({  //Acrobat plugin thru release 8.0 all crash FF3
-                tag     :'object'
-               ,cls     : 'x-media x-media-pdf'
-               ,type    : "application/pdf"
-               ,data    : "@url"
-               ,autoSize:true
-               ,params  : { src : "@url" }
-
-               },Ext.isIE?{
-                   classid :"CLSID:CA8A9780-280D-11CF-A24D-444553540000"
-                   }:false)
-
-      ,"PDFFRAME" : {  //Most reliable method for all browsers!!
-                  tag      : 'iframe'
-                 ,cls      : 'x-media x-media-pdf-frame'
-                 ,frameBorder : 0
-                 ,style    : {overflow:'none'}
-                 ,src      : "@url"
-                 ,autoSize :true
-        }
-
-      ,"WMV" : Ext.apply(
-              {tag      :'object'
-              ,cls      : 'x-media x-media-wmv'
-              ,type     : 'application/x-mplayer2'
-              ,data     : "@url"
-              ,autoSize : false
-              ,params  : {
-
-                  filename     : "@url"
-                 ,displaysize  : 0
-                 ,autostart    : "@start"
-                 ,showControls : "@controls"
-                 ,showStatusBar: "@status"
-                 ,showaudiocontrols : true
-                 ,stretchToFit  : true
-                 ,Volume        :"@volume"
-                 ,PlayCount     : 1
-
-               }
-               },Ext.isIE?{
-                   classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
-                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
-                   ,type:'application/x-oleobject'
-                   }:
-                   {src:"@url"})
-
-       /* WMV Interface Notes
-        * On IE only, to retrieve the object interface (for controlling player via JS)
-        * use mediaComp.getInterface().object.controls
-        *
-        * For all other browsers use: mediaComp.getInterface().controls
-        Related DOM attributes for WMV:
-        DataFormatAs :
-        Name :
-        URL :
-        OpenState:6
-        PlayState:0
-        Controls :
-        Settings :
-        CurrentMedia:null
-        MediaCollection :
-        PlaylistCollection :
-        VersionInfo:9.0.0.3008
-        Network :
-        CurrentPlaylist :
-        CdromCollection :
-        ClosedCaption :
-        IsOnline:false
-        Error :
-        Status :
-        Dvd :
-        Enabled:true
-        FullScreen:false
-        EnableContextMenu:true
-        UiMode:full
-        StretchToFit:false
-        WindowlessVideo:false
-        IsRemote:false
-        */
-
-       ,"SWF" :  Ext.apply({
-                  tag      :'object'
-                 ,cls      : 'x-media x-media-swf'
-                 ,type     : 'application/x-shockwave-flash'
-                 ,scripting: 'sameDomain'
-                 ,standby  : 'Loading..'
-                 ,loop     :  true
-                 ,start    :  false
-                 ,unsupportedText : {cn:['The Adobe Flash Player is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]}
-                 ,params   : {
-                      movie     : "@url"
-                     ,menu      : "@controls"
-                     ,play      : "@start"
-                     ,quality   : "high"
-                     ,allowscriptaccess : "@scripting"
-                     ,allownetworking : 'all'
-                     ,allowfullScreen : false
-                     ,bgcolor   : "#FFFFFF"
-                     ,wmode     : "opaque"
-                     ,loop      : "@loop"
-                    }
-
-                },Ext.isIE?
-                    {classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
-                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
-                    }:
-                    {data     : "@url"})
-
-        // JWP Reference : http://code.jeroenwijering.com/trac/wiki/FlashAPI
-        ,"JWP" :  Ext.apply({
-              tag      :'object'
-             ,cls      : 'x-media x-media-swf x-media-flv'
-             ,type     : 'application/x-shockwave-flash'
-             ,data     : "@url"
-             ,loop     :  false
-             ,start    :  false
-             //ExternalInterface bindings
-             ,boundExternals : ['sendEvent' , 'addModelListener', 'addControllerListener', 'addViewListener', 'getConfig', 'getPlaylist']
-             ,params   : {
-                 movie     : "@url"
-                ,flashVars : {
-                               autostart:'@start'
-                              ,repeat   :'@loop'
-                              ,height   :'@height'
-                              ,width    :'@width'
-                              ,id       :'@id'
-                              }
-                }
-
-        },Ext.isIE?{
-             classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
-            ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0"
-            }:false)
-
-         /* QT references:
-          * http://developer.apple.com/documentation/quicktime/Conceptual/QTScripting_JavaScript/aQTScripting_Javascro_AIntro/chapter_1_section_1.html
-          */
-        ,"QT" : Ext.apply({
-                       tag      : 'object'
-                      ,cls      : 'x-media x-media-quicktime'
-                      ,type     : "video/quicktime"
-                      ,style    : {position:'relative',"z-index":1 ,behavior:'url(#qt_event_source)'}
-                      ,scale    : 'aspect'  // ( .5, 1, 2 , ToFit, Aspect )
-                      ,unsupportedText : '<a href="http://www.apple.com/quicktime/download/">Get QuickTime</a>'
-                      ,scripting : true
-                      ,volume   : '50%'
-                      ,data     : '@url'
-                      ,params   : {
-                           src          : Ext.isIE?'@url': null
-                          ,href        : "http://quicktime.com"
-                          ,target      : "_blank"
-                          ,autoplay     : "@start"
-                          ,targetcache  : true
-                          ,cache        : true
-                          ,wmode        : 'transparent'
-                          ,controller   : "@controls"
-                      ,enablejavascript : "@scripting"
-                          ,loop         : '@loop'
-                          ,scale        : '@scale'
-                          ,volume       : '@volume'
-                          ,QTSRC        : '@url'
-
-                       }
-
-                     },Ext.isIE?
-                          { classid      :'clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B'
-                           ,codebase     :"http" + ((Ext.isSecure) ? 's' : '') + '://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
-
-                       }:
-                       {
-                         PLUGINSPAGE  : "http://www.apple.com/quicktime/download/"
-
-                    })
-
-        //For QuickTime DOM event support include this <object> tag structure in the <head> section
-        ,"QTEVENTS" : {
-                   tag      : 'object'
-                  ,id       : 'qt_event_source'
-                  ,cls      : 'x-media x-media-qtevents'
-                  ,type     : "video/quicktime"
-                  ,params   : {}
-                  ,classid      :'clsid:CB927D12-4FF7-4a9e-A169-56E4B8A75598'
-                  ,codebase     :"http" + ((Ext.isSecure) ? 's' : '') + '://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
-                 }
-
-        //WordPress Audio Player : http://wpaudioplayer.com/
-        ,"WPMP3" : Ext.apply({
-                       tag      : 'object'
-                      ,cls      : 'x-media x-media-audio x-media-wordpress'
-                      ,type     : 'application/x-shockwave-flash'
-                      ,data     : '@url'
-                      ,start    : true
-                      ,loop     : false
-                      ,boundExternals : ['open','close','setVolume','load']
-                      ,params   : {
-                           movie        : "@url"
-                          ,width        :'@width'  //required
-                          ,flashVars : {
-                               autostart    : "@start"
-                              ,controller   : "@controls"
-                              ,enablejavascript : "@scripting"
-                              ,loop         :'@loop'
-                              ,scale        :'@scale'
-                              ,initialvolume:'@volume'
-                              ,width        :'@width'  //required
-                              ,encode       : 'no'  //mp3 urls will be encoded
-                              ,soundFile    : ''   //required
-                          }
-                       }
-                    },Ext.isIE?{classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"}:false)
-
-
-        ,"REAL" : Ext.apply({
-                tag     :'object'
-               ,cls     : 'x-media x-media-real'
-               ,type    : "audio/x-pn-realaudio"
-               ,data    : "@url"
-               ,controls: 'imagewindow,all'
-               ,start   : false
-               ,standby : "Loading Real Media Player components..."
-               ,params   : {
-                          src        : "@url"
-                         ,autostart  : "@start"
-                         ,center     : false
-                         ,maintainaspect : true
-                         ,controller : "@controls"
-                         ,controls   : "@controls"
-                         ,volume     :'@volume'
-                         ,loop       : "@loop"
-                         ,console    : "_master"
-                         ,backgroundcolor : '#000000'
-                         }
-
-                },Ext.isIE?{classid :"clsid:CFCDAA03-8BE4-11CF-B84B-0020AFBBCCFA"}:false)
-
-        ,"SVG" : {
-                  tag      : 'object'
-                 ,cls      : 'x-media x-media-img x-media-svg'
-                 ,type     : "image/svg+xml"
-                 ,data     : "@url"
-                 ,params   : { src : "@url"}
-        }
-        ,"GIF" : {
-                  tag      : 'img'
-                 ,cls      : 'x-media x-media-img x-media-gif'
-                 ,src     : "@url"
-        }
-        ,"JPEG" : {
-                  tag      : 'img'
-                 ,cls      : 'x-media x-media-img x-media-jpeg'
-                 ,style    : {overflow:'none', display:'inline'}
-                 ,src     : "@url"
-        }
-        ,"JP2" :{
-                  tag      : 'object'
-                 ,cls      : 'x-media x-media-img x-media-jp2'
-                 ,type     : "image/jpeg2000-image"
-                 ,data     : "@url"
-                }
-
-        ,"PNG" : {
-                  tag      : 'img'
-                 ,cls      : 'x-media x-media-img x-media-png'
-                 ,src     : "@url"
-        }
-        ,"HTM" : {
-                  tag      : 'iframe'
-                 ,cls      : 'x-media x-media-html'
-                 ,frameBorder : 0
-                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
-                 ,src     : "@url"
-        }
-        ,"TXT" : {
-                  tag      : 'object'
-                 ,cls      : 'x-media x-media-text'
-                 ,type     : "text/plain"
-                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
-                 ,data     : "@url"
-        }
-        ,"RTF" : {
-                  tag      : 'object'
-                 ,cls      : 'x-media x-media-rtf'
-                 ,type     : "application/rtf"
-                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
-                 ,data     : "@url"
-        }
-        ,"JS" : {
-                  tag      : 'object'
-                 ,cls      : 'x-media x-media-js'
-                 ,type     : "text/javascript"
-                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
-                 ,data     : "@url"
-        }
-        ,"CSS" : {
-                  tag      : 'object'
-                 ,cls      : 'x-media x-media-css'
-                 ,type     : "text/css"
-                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
-                 ,data     : "@url"
-        }
-        ,"SILVERLIGHT" : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-silverlight'
-             ,type      :"application/ag-plugin"
-             ,data     : "@url"
-             ,params  : { MinRuntimeVersion: "1.0" , source : "@url" }
-        }
-        ,"SILVERLIGHT2" : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-silverlight'
-             ,type      :"application/x-silverlight-2-b2"
-             ,data     : "data:application/x-silverlight-2-b2,"
-             ,params  : { MinRuntimeVersion: "2.0" }
-             ,unsupportedText: '<a href="http://go2.microsoft.com/fwlink/?LinkID=114576&v=2.0"><img style="border-width: 0pt;" alt="Get Microsoft Silverlight" src="http://go2.microsoft.com/fwlink/?LinkID=108181"/></a>'
-        }
-        ,"DATAVIEW" : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-dataview'
-             ,classid  : 'CLSID:0ECD9B64-23AA-11D0-B351-00A0C9055D8E'
-             ,type     : 'application/x-oleobject'
-             ,unsupportedText: 'MS Dataview Control is not installed'
-
-        }
-
-
-        ,"OWC:XLS" : Ext.apply({     //experimental IE only
-              tag      : 'object'
-             ,cls      : 'x-media x-media-xls'
-             ,type      :"application/vnd.ms-excel"
-             ,controltype: "excel"
-             ,params  : { DataType : "CSVURL"
-                        ,CSVURL : '@url'
-                        ,DisplayTitleBar : true
-                        ,AutoFit         : true
-                     }
-             },Ext.isIE?{
-                   codebase: "file:msowc.cab"
-                  ,classid :"CLSID:0002E510-0000-0000-C000-000000000046" //owc9
-                 //classid :"CLSID:0002E550-0000-0000-C000-000000000046" //owc10
-                 //classid :"CLSID:0002E559-0000-0000-C000-000000000046" //owc11
-
-                 }:false)
-
-        ,"OWC:CHART" : Ext.apply({     //experimental
-              tag      : 'object'
-             ,cls      : 'x-media x-media-xls'
-             ,type      :"application/vnd.ms-excel"
-             ,data     : "@url"
-             ,params  : { DataType : "CSVURL" }
-             },Ext.isIE?{
-                    classid :"CLSID:0002E500-0000-0000-C000-000000000046" //owc9
-                  //classid :"CLSID:0002E556-0000-0000-C000-000000000046" //owc10
-                  //classid :"CLSID:0002E55D-0000-0000-C000-000000000046" //owc11
-                 }:false)
-
-        ,"OFFICE" : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-office'
-             ,type      :"application/x-msoffice"
-             ,data     : "@url"
-        }
-        ,"POWERPOINT" : Ext.apply({     //experimental
-                      tag      : 'object'
-                     ,cls      : 'x-media x-media-ppt'
-                     ,type     :"application/vnd.ms-powerpoint"
-                     ,file     : "@url"
-                     },Ext.isIE?{classid :"CLSID:EFBD14F0-6BFB-11CF-9177-00805F8813FF"}:false)
-
-        ,"XML" : {
-              tag      : 'iframe'
-             ,cls      : 'x-media x-media-xml'
-             ,style    : {overflow:'auto'}
-             ,src     : "@url"
-        }
-
-        //VLC ActiveX Player -- Suffers the same fate as the Acrobat ActiveX Plugin
-        ,"VLC" : Ext.apply({
-              tag      : 'object'
-             ,cls      : 'x-media x-media-vlc'
-             ,type     : "application/x-vlc-plugin"
-             ,version  : "VideoLAN.VLCPlugin.2"
-             ,pluginspage:"http://www.videolan.org"
-             ,events   : true
-             ,start    : false
-             ,params   : {
-                   Src        : "@url"
-                  ,MRL        : "@url"
-                  ,autoplay  :  "@start"
-                  ,ShowDisplay: "@controls"
-                  ,Volume     : '@volume'
-                  ,Autoloop   : "@loop"
-
-                }
-
-             },Ext.isIE?{
-                  classid :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
-                 ,CODEBASE :"http://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
-             }:false)
-
-         ,"RDP" : Ext.apply({
-              tag      : 'object'
-             ,cls      : 'x-media x-media-rdp'
-             ,type     : "application/rds"
-             ,unsupportedText: "Remote Desktop Web Connection ActiveX control is required. <a target=\"_msd\" href=\"http://go.microsoft.com/fwlink/?linkid=44333\">Download it here</a>."
-             ,params:{
-                  Server         : '@url'
-                 ,Fullscreen     : false
-                 ,StartConnected : false
-                 ,DesktopWidth   : '@width'
-                 ,DesktopHeight  : '@height'
-             }
-
-         },Ext.isIE?{
-             classid :"CLSID:9059f30f-4eb1-4bd2-9fdc-36f43a218f4a"
-            ,CODEBASE :"msrdp.cab#version=5,2,3790,0"
-
-
-         }:false)
-
+         this.toString = this.asMarkup;  //Inline rendering support for this and all subclasses
+         Ext.apply(this,config||{});
+         this.initMedia();
     };
-
+    var ux = Ext.ux.Media;
     var stateRE = /4$/i;
 
     if(parseFloat(Ext.version) < 2.1){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
-    Ext.extend(ux, Object , {
+    Ext.ux.Media.prototype = {
 
+         /**
+         * @property {Object} mediaObject An {@link Ext.ux.Media.Element} reference to rendered DOM Element.
+         */
          mediaObject     : null,
+
+         /**
+          * @cfg {Object} mediaCfg Media configuration options.
+          * @example mediaCfg  : {
+             id    : String   Desired DOM id of rendered Media tag
+             tag   :
+             style : Obj  optional DomHelper style object
+
+            }
+         */
          mediaCfg        : null,
          mediaVersion    : null,
          requiredVersion : null,
+
+         /**
+          * @cfg {String/DOMHelperObject} unsupportedText Text Markup/DOMHelper config displayed when the media is not available or cannot be rendered without an additional browser plugin.
+          */
          unsupportedText : null,
+
+         /** @cfg {string} hideMode Defines the hideMode for Ext.ux.Media component sub-classes.<p>
+          * If the the value of 'nosize' is used, the {@link Ext.ux.VisibilityMode} plugin is applied to the media Component
+          * as well as to upstream layout Containers.
+          * @default for IE: 'display', 'nosize' for all other browsers
+         */
+
+         hideMode      : !Ext.isIE?'nosize':'display',
+
+         animCollapse  :  Ext.enableFx && Ext.isIE,
+
+         animFloat     :  Ext.enableFx && Ext.isIE,
+
+         autoScroll    : true,
+
+         bodyStyle     : {position: 'relative'},
+
+         visibilityCls : !Ext.isIE ?'x-hide-nosize':null,
+
+        /**
+          * @private (usually called once by initComponent)
+          * Subclasses should override for special startup tasks
+          */
+         initMedia      : function(){ },
 
          /**
           * @cfg {boolean} disableCaching Disable browser caching of URLs
           */
-         disableCaching  : true,
+         disableCaching  : false,
 
          _maxPoll        : 200,
 
-         /* Component Plugins Interface
-           extends the Component instance with ux.Media.* interfaces
-         */
-         init        : function(component){
 
-            if(component && this.getEl === undefined){
-                Ext.applyIf(component,this);
-            }
-
-         },
-
-         // private (called once by initComponent)
-         initMedia      : function(){
-
-            if(!Ext.isIE && this.initialConfig){
-               //Attach the Visibility Fix to the current class Component
-               new ux.VisibilityFix({
-                 mode: this.visibilityCls,
-                 hideMode: this.hideMode,
-                 elements:this.visModeTargets || null }
-               ).init(this);
-             }
-
-            //Inline rendering support for this and all subclasses
-            this.toString = this.asMarkup;
-
-             /* mediarender Event is raised when the media has been inserted into the DOM.
-              * The media however, may NOT be in a usable state when the event is raised.
-              */
-             if(this.events){
-                 this.addEvents(
-                      /**
-                      * @event mediarender
-                      * Fires immediately after the markup has been rendered.
-                      * @param {Object} This Media Class object instance.
-                      * @param {Object} mediaObject The {@link Ext.Element} object rendered.
-                      */
-
-                     'mediarender',
-
-                      /**
-                      * @event mediarender
-                      * Fires when the mediaObject has reported a loaded state (IE, Opera Only)
-                      * @param {Object} This Media Class object instance.
-                      * @param {Object} mediaObject The {@link Ext.Element} object loaded.
-                      */
-                     'mediaload'
-
-                     );
-              }
-         },
-
+         /** @private */
          getMediaType: function(type){
              return ux.mediaTypes[type];
          },
 
-         //Assert default values and exec as functions
+         /** @private
+          Assert default values and exec as functions
+          */
          assert : function(v,def){
               v= typeof v === 'function'?v.call(v.scope||null):v;
               return Ext.value(v ,def);
          },
 
-         //Assert/cleanse ID.  Overridable by sub-classes
+        /** @private
+           Assert/cleanse ID.  Overridable by sub-classes
+         */
          assertId : function(id, def){
              id || (id = def || Ext.id());
              return id;
@@ -617,16 +206,24 @@
          * Prepare a URL for disabledCaching
          */
          prepareURL : function(url, disableCaching){
+            var parts = url ? url.split('#') : [''];
+            if(!!url && (disableCaching = disableCaching === undefined ? this.disableCaching : disableCaching) ){
 
-            if(!!url && (disableCaching || this.disableCaching) && !(/_dc=/i).test(url) ){
-                var append = "_dc=" + (new Date().getTime());
-                if(url.indexOf("?") !== -1){
-                    url += "&" + append;
-                }else{
-                    url += "?" + append;
+                var u = parts[0];
+
+                if( !(/_dc=/i).test(u) ){
+
+                    var append = "_dc=" + (new Date().getTime());
+                    if(u.indexOf("&") !== -1){
+                        u += "&" + append;
+                    }else{
+                        u += "?" + append;
+                    }
+
+                    parts[0] = u;
                 }
             }
-            return url;
+            return parts.length > 1 ? parts.join('#') : parts[0];
          },
 
           /* Normalize the mediaCfg to DOMHelper cfg */
@@ -638,7 +235,7 @@
 
              var m= Ext.apply({url:false,autoSize:false}, mediaCfg); //make a copy
 
-             m.url = this.prepareURL(this.assert(m.url,false));
+             m.url = this.prepareURL(this.assert(m.url,false),m.disableCaching);
 
              if( m.mediaType){
 
@@ -722,6 +319,7 @@
                  delete   m.params;
                  delete   m.unsupportedText;
                  delete   m.renderOnResize;
+                 delete   m.disableCaching;
                  delete   m.listeners;
                  delete   m.height;
                  delete   m.width;
@@ -736,13 +334,14 @@
            /**
             * @return {String} the renderable markup of a passed normalized mediaCfg
             */
-           asMarkup  : function(mediaCfg){
+         asMarkup  : function(mediaCfg){
               return this.mediaMarkup(this.prepareMedia(mediaCfg));
-           },
+         },
 
-
-           /** @private */
-           mediaMarkup : function(mediaCfg){
+          /** @private
+          * macro replacement engine for mediaCfg -> rendered tags/styling
+          */
+         mediaMarkup : function(mediaCfg){
             mediaCfg = mediaCfg || this.mediaCfg;
             if(mediaCfg){
                  var _macros = mediaCfg._macros;
@@ -761,18 +360,28 @@
                   return m;
             }
 
-         }
-         /** @private */
-         ,setMask  : function(el) {
-             if(this.mediaMask && !this.mediaMask.enable){
-                    el = Ext.get(el);
-                    if(this.mediaMask = new Ext.ux.IntelliMask(el || this[this.mediaEl],
-                       Ext.apply({fixElementForMedia:true},this.mediaMask))){
-                            this.mediaMask.el.addClass('x-media-mask');
-                      }
-            }
+         },
+
+         /** @private
+         * Set the mediaMask if defined
+         */
+         setMask  : function(el) {
+             var mm;
+             if((mm = this.mediaMask)){
+                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,mm));
+                    mm.el.addClass('x-media-mask');
+             }
 
          },
+         /**
+         *  Refreshes the Media Object based on last known mediaCfg.
+         *  @param {Element} target The target container Element for the refresh operation.
+         *  @returns {Ext.ux.Media} this
+         */
+          refreshMedia  : function(target){
+                 if(this.mediaCfg) {this.renderMedia(null,target);}
+                 return this;
+          },
 
           /**
           *  This method updates the target Element with a new mediaCfg object,
@@ -786,7 +395,7 @@
                   return;
               }
               var mc = (this.mediaCfg = mediaCfg || this.mediaCfg) ;
-              ct = Ext.get(ct || this.lastCt || (this.mediaObject?this.mediaObject.dom.parentNode:null));
+              ct = Ext.get(this.lastCt || ct || (this.mediaObject?this.mediaObject.dom.parentNode:null));
 
               this.onBeforeMedia.call(this, mc, ct, domPosition , w , h);
 
@@ -808,7 +417,9 @@
 
           },
 
-          /*Override if necessary to render to targeted container */
+          /** @private
+           *Override if necessary to render to targeted container
+           */
           writeMedia : function(mediaCfg, container, domPosition ){
               var ct = Ext.get(container);
               if(ct){
@@ -818,16 +429,28 @@
 
           },
 
-          //Remove an existing mediaObject from the DOM.
+          /**
+           * Remove a rendered  mediaObject from the DOM.
+           */
           clearMedia : function(){
-            if(Ext.isReady && this.mediaObject){
-              this.mediaObject.ownerCt = null;
-              try{
-                this.mediaObject.removeAllListeners();
-                this.mediaObject.remove(true,true);
-              }catch(er){}
+            var mo;
+            if(Ext.isReady && (mo = this.mediaObject)){
+                mo.remove(true,true);
             }
             this.mediaObject = null;
+          },
+
+           /** @private */
+          resizeMedia   : function(comp, w, h){
+              var mc = this.mediaCfg;
+
+              if(mc && this.boxReady && mc.renderOnResize && !!w && !!h){
+                  // Ext.Window.resizer fires this event a second time
+                  if(arguments.length > 3 && (!this.mediaObject || mc.renderOnResize )){
+                      this.refreshMedia(this[this.mediaEl]);
+                  }
+              }
+
           },
 
           /** @private */
@@ -841,8 +464,7 @@
                 //Calculate parent container size for macros (if available)
                 if(m.autoSize && (autoSizeEl = Ext.isReady?
                     //Are we in a layout ? autoSize to the container el.
-                    this.ownerCt ? this.getEl() :  Ext.get(ct||this.lastCt)
-                    :null)
+                     Ext.get(this[this.mediaEl] || this.lastCt || ct) :null)
                  ){
                   m.height = this.autoHeight ? null : autoSizeEl.getHeight(true);
                   m.width  = this.autoWidth ? null : autoSizeEl.getWidth(true);
@@ -854,23 +476,34 @@
              mediaCfg = m;
 
           },
-          /** @private */
-          // Media Load Handler, called when a mediaObject reports a loaded readystate
+
+          /** @private
+           * Media Load Handler, called when a mediaObject reports a loaded readystate
+           */
           onMediaLoad : function(e){
                if(e && e.type == 'load'){
-                  this.fireEvent('mediaload',this, this.mediaObject);
+                  this.fireEvent('mediaload',this, this.mediaObject );
+
                   if(this.mediaMask && this.autoMask){ this.mediaMask.hide(); }
+
                }
           },
           /** @private */
           onAfterMedia   : function(ct){
+               var mo;
+               if(this.mediaCfg && ct && (mo = this.mediaObject =
+                       new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true) ))){
+                   mo.ownerCt = this;
 
-               if(this.mediaCfg && ct && (this.mediaObject = ct.child('.x-media') )){
-                   this.mediaObject.ownerCt = this;
+                   var L; //Reattach any DOM Listeners after rendering.
+                   if(L = this.mediaCfg.listeners ||null){
+                      mo.on(L);  //set any DOM listeners
+                    }
+                   this.fireEvent('mediarender',this, this.mediaObject );
 
                     //Load detection for non-<object> media (iframe, img)
-                   if(this.mediaObject.dom.tagName !== 'OBJECT'){
-                      this.mediaObject.on({
+                   if(mo.dom.tagName !== 'OBJECT'){
+                      mo.on({
                        load  :this.onMediaLoad
                       ,scope:this
                       ,single:true
@@ -881,21 +514,15 @@
                        this.pollReadyState( this.onMediaLoad.createDelegate(this,[{type:'load'}],0));
                    }
 
-                   var L; //Reattach any DOM Listeners after rendering.
-                   if(L = this.mediaCfg.listeners ||null){
-                       this.mediaObject.on(L);  //set any DOM listeners
-                     }
-                   this.fireEvent('mediarender',this, this.mediaObject);
-
-
                }
               if(this.autoWidth || this.autoHeight){
                 this.syncSize();
               }
           },
 
-          /**  synthesize a load event for DOMs that support object.readyState
+          /**
            * @private
+           * synthesize a mediaload event for DOMs that support object.readyState
            */
          pollReadyState : function( cb, readyRE){
 
@@ -905,113 +532,164 @@
             }
          },
 
-         getInterface  : function(){
+          /**
+          * @return {Ext.Element} reference to the rendered media Object.
+          */
+          getInterface  : function(){
               return this.mediaObject?this.mediaObject.dom||null:null;
-          }
+          },
 
-         ,detectVersion  : Ext.emptyFn
+         detectVersion  : Ext.emptyFn,
 
-
-         /* Class default: IE provides sufficient DOM readyState for object tags to manage mediaMasks automatically
+         /**
+            @cfg {Boolean} autoMask
+            @default false
+            Class default: IE provides sufficient DOM readyState for object tags to manage {@link #mediaMask}s automatically
             (No other browser does), so masking must either be directed manually or use the autoHide option
-            of the Ext.ux.IntelliMask.
-          * if true the Component attempts to manage the mediaMask based on events/media status
-          * false to control mask visibility manually.
+            of the {@link Ext.ux.IntelliMask}.
+          * <p>If true the Component attempts to manage the mediaMask based on events/media status,
+          * false permits control of the mask visibility manually.
           */
 
-         ,autoMask   : Ext.isIE
+         autoMask   : false
+    };
 
-    });
+    Ext.ns('Ext.ux.plugin');
 
-    //Private adapter class
-    var mediaComponentAdapter = function(){};
+    var componentAdapter = {
 
-    Ext.extend(mediaComponentAdapter, Object, {
+        init         : function(){
 
-        hideMode      : !Ext.isIE?'nosize':'display',
+            this.getId = function(){
+                return this.id || (this.id = "media-comp" + (++Ext.Component.AUTO_ID));
+            };
 
-        animCollapse  :  Ext.enableFx && Ext.isIE,
+            this.html = this.contentEl = this.items = null;
 
-        animFloat     :  Ext.enableFx && Ext.isIE,
+            //Attach the Visibility Fix (if available) to the current class Component
+            if(this.hideMode == 'nosize' && Ext.ux.plugin.VisibilityMode){
 
-        visibilityCls : !Ext.isIE ?'x-hide-nosize':null,
-
-        autoScroll    : true,
-
-        height           : 'auto',
-        width            : 'auto',
-
-        shadow        : false,
-
-        bodyStyle     : {position: 'relative'},
-
-        /** @private */
-        resizeMedia   : function(comp, w, h){
-            var mc = this.mediaCfg;
-
-            if(mc && this.boxReady && !!w && !!h){
-                // Ext.Window.resizer fires this event a second time
-                if(arguments.length > 3 && (!this.mediaObject || mc.renderOnResize )){
-                    this.refreshMedia(this[this.mediaEl]);
-                }
+               new Ext.ux.plugin.VisibilityMode({
+                 visibilityCls   : 'x-hide-nosize',
+                 hideMode        : 'nosize'
+                }).init(this);
             }
 
-         },
+            this.initMedia();
 
-        refreshMedia  : function(target){
-            if(this.mediaCfg) {this.renderMedia(null,target);}
-        },
-        /** @private */
-        onAfterRender: function(visModeTargets){
+            //Inline rendering support for this and all subclasses
+            this.toString = this.asMarkup;
+
+            this.addEvents(
+
+              /**
+                * Fires immediately after the markup has been rendered.
+                * @event mediarender
+                * @memberOf Ext.ux.Media
+                * @param {Object} component This Media Class object instance.
+                * @param {Element} mediaObject The Ext.Element object rendered.
+               */
+                'mediarender',
+               /**
+                * Fires when the mediaObject has reported a loaded state (IE, Opera Only)
+                * @event mediaload
+                * @memberOf Ext.ux.Media
+                * @param {Object} component This Media Class object instance.
+                * @param {Element} mediaObject The Ext.Element object loaded.
+                */
+
+                'mediaload');
 
             if(this.mediaCfg.renderOnResize ){
                 this.on('resize', this.resizeMedia, this);
-            }else{
-                this.renderMedia(this.mediaCfg,this[this.mediaEl] || this.getEl());
+            }
+
+
+        },
+        afterRender  : function(ct){
+
+            //set the mediaMask
+            this.setMask(this[this.mediaEl] || ct);
+
+            if(!this.mediaCfg.renderOnResize ){
+                this.renderMedia(this.mediaCfg,this[this.mediaEl] || ct);
             }
 
         },
+        onDestroy  :  function(){
+
+            this.clearMedia();
+            Ext.destroy(this.mediaMask,this.loadMask);
+            this.lastCt = this.mediaObject = this.renderTo = this.applyTo = this.mediaMask = this.loadMask = null;
+
+
+        }
+    };
+
+    /**
+     * @class Ext.ux.Media.Component
+     * @extends Ext.BoxComponent
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @base Ext.ux.Media
+     * @constructor
+     * @param {Object} config The config object
+     */
+
+    Ext.ux.Media.Component= Ext.extend ( Ext.BoxComponent, {
+
+
+        ctype         : "Ext.ux.Media.Component",
+
+        /**
+        * @cfg {String} mediaEl The name of the containing element for the media.
+        * @default 'el'
+        */
+        mediaEl         : 'el',
+
+        autoEl  : {tag:'div',style : { overflow: 'hidden', display:'block',position: 'relative'}},
+
+        cls     : "x-media-comp",
+
+
+        mediaClass    : Ext.ux.Media,
+
+        constructor   : function(){
+
+         //Inherit the ux.Media class
+          Ext.apply(this , this.mediaClass.prototype );
+          ux.Component.superclass.constructor.apply(this, arguments);
+
+        },
+
+
+        /** @private */
+        initComponent   : function(){
+
+            ux.Component.superclass.initComponent.apply(this,arguments);
+            componentAdapter.init.apply(this,arguments);
+        },
+
+
+        /** @private */
+        afterRender  : function(ct){
+            ux.Component.superclass.afterRender.apply(this,arguments);
+            componentAdapter.afterRender.apply(this,arguments);
+         },
+
+         /** @private */
+        beforeDestroy   : function(){
+
+            ux.Component.superclass.beforeDestroy.apply(this,arguments);
+            componentAdapter.onDestroy.apply(this,arguments);
+         },
 
         doAutoLoad : Ext.emptyFn,
 
-        mediaMask  : false
 
-    });
-
-    /* Generic Media BoxComponent */
-    Ext.ux.MediaComponent = Ext.extend(Ext.BoxComponent, {
-        ctype           : "Ext.ux.MediaComponent",
-        autoEl          : 'div',
-        cls             : "x-media-comp",
-        mediaEl         : 'el',   //the containing target element for the media,
-
-        getId           : function(){
-            return this.id || (this.id = "media-comp" + (++Ext.Component.AUTO_ID));
-        },
-        /** @private */
-        initComponent   : function(){
-            this.visModeTargets  = [this.actionMode];
-            this.initMedia();
-
-            Ext.ux.MediaComponent.superclass.initComponent.apply(this,arguments);
-        },
-
-        /** @private */
-        afterRender     :  function(ct){
-
-            this.setAutoScroll();
-            this.onAfterRender();
-            Ext.ux.MediaComponent.superclass.afterRender.apply(this,arguments);
-
-        },
-        /** @private */
-        beforeDestroy   : function(){
-            this.clearMedia();
-            Ext.destroy(this.mediaMask,this.loadMask);
-            Ext.ux.MediaComponent.superclass.beforeDestroy.call(this);
-            this.lastCt = this.mediaObject = this.renderTo = this.applyTo = null;
-
-         },
          /** @private */
         setAutoScroll   : function(){
             if(this.rendered && this.autoScroll){
@@ -1021,99 +699,172 @@
 
     });
 
-    //Inherit the Media.Flash class interface
-    Ext.apply(Ext.ux.MediaComponent.prototype, Ext.ux.Media.prototype);
-    Ext.apply(Ext.ux.MediaComponent.prototype, mediaComponentAdapter.prototype);
-    Ext.reg('media', Ext.ux.MediaComponent);
 
-    ux.Panel = Ext.extend( Ext.Panel, {
+    Ext.reg('uxmedia', Ext.ux.Media.Component);
+    Ext.reg('media', Ext.ux.Media.Component);
 
-        ctype         : "Ext.ux.Media.Panel",
-        cls           : "x-media-panel",
-        mediaEl       : 'body',   //the containing target element for the media
+    /**
+     * @class Ext.ux.Media.Panel
+     * @extends Ext.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @base Ext.ux.Media
+     * @param {Object} config The config object
+     */
 
-        /** @private */
-        initComponent : function(){
-            this.visModeTargets  = [this.collapseEl,this.floating? null: this.actionMode];
-            this.initMedia();
-            this.html = this.contentEl = this.items = null;
+    Ext.ux.Media.Panel = Ext.extend( Ext.Panel,  {
 
-            ux.Panel.superclass.initComponent.call(this);
+         cls           : "x-media-panel",
+
+         ctype         : "Ext.ux.Media.Panel",
+
+          /**
+           * @cfg {String} mediaEl The name of the containing element for the media.
+           * @default 'body'
+           */
+         mediaEl       : 'body',
+
+         mediaClass    : Ext.ux.Media,
+
+         constructor   : function(){
+
+         //Inherit the ux.Media class
+          Ext.apply(this , this.mediaClass.prototype );
+
+          ux.Panel.superclass.constructor.apply(this, arguments);
+
         },
+
+
         /** @private */
-        onRender  : function(){
+        initComponent   : function(){
 
-            ux.Panel.superclass.onRender.apply(this, arguments);
-            this.onAfterRender();
+            ux.Panel.superclass.initComponent.apply(this,arguments);
+            componentAdapter.init.apply(this,arguments);
+        },
 
+
+        /** @private */
+        afterRender  : function(ct){
+            ux.Panel.superclass.afterRender.apply(this,arguments);
+            componentAdapter.afterRender.apply(this,arguments);
          },
-        /** @private */
-        beforeDestroy : function(){
 
-            this.clearMedia();
-            ux.Panel.superclass.beforeDestroy.call(this);
-        }
+         /** @private */
+        beforeDestroy   : function(){
 
+            ux.Panel.superclass.beforeDestroy.apply(this,arguments);
+            componentAdapter.onDestroy.apply(this,arguments);
+         },
+
+        doAutoLoad : Ext.emptyFn
 
     });
 
-    //Inherit the Media class interface
-    Ext.apply(ux.Panel.prototype,ux.prototype);
-    Ext.apply(ux.Panel.prototype, mediaComponentAdapter.prototype);
-    Ext.reg('mediapanel', Ext.ux.MediaPanel = ux.Panel);
 
-    ux.Window = Ext.extend( Ext.Window ,{
+    Ext.reg('mediapanel', Ext.ux.Media.Panel);
+    /**
+     * @class Ext.ux.Media.Portlet
+     * @extends Ext.ux.Media.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
 
-        cls           : "x-media-window",
-        ctype         : "Ext.ux.Media.Window",
-        mediaEl       : 'body',   //the containing target element for the media
-        initComponent : function(){
+    Ext.ux.Media.Portlet = Ext.extend ( Ext.ux.Media.Panel , {
+       anchor       : '100%',
+       frame        : true,
+       collapseEl   : 'bwrap',
+       collapsible  : true,
+       draggable    : true,
+       ctype        : "Ext.ux.Media.Portlet",
+       cls          : 'x-portlet x-media-portlet'
 
-            this.visModeTargets  = [this.collapseEl,this.floating? null: this.actionMode];
-            this.initMedia();
-            this.html = this.contentEl = this.items = null;
+    });
 
-            ux.Window.superclass.initComponent.call(this);
-        },
+    Ext.reg('mediaportlet', Ext.ux.Media.Portlet);
+
+   /**
+     * @class Ext.ux.Media.Window
+     * @extends Ext.Window
+     * @version 1.0
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @base Ext.ux.Media
+     * @param {Object} config The config object
+     */
+
+    Ext.ux.Media.Window = Ext.extend( Ext.Window ,{
+
         /** @private */
-        onRender  : function(){
+        constructor   : function(config){
 
-           ux.Window.superclass.onRender.apply(this, arguments);
+          Ext.apply(this , this.mediaClass.prototype );
 
-           this.onAfterRender();
+          ux.Window.superclass.constructor.apply(this, arguments);
+
+        },
+
+         cls           : "x-media-window",
+
+         ctype         : "Ext.ux.Media.Window",
+
+         mediaClass    : Ext.ux.Media,
+
+          /**
+           * @cfg {String} mediaEl The name of the containing element for the media.
+           * @default 'body'
+           */
+         mediaEl       : 'body',
+
+
+        /** @private */
+        initComponent   : function(){
+            ux.Window.superclass.initComponent.apply(this,arguments);
+            componentAdapter.init.apply(this,arguments);
+        },
+
+        /** @private */
+        afterRender  : function(){
+            ux.Window.superclass.afterRender.apply(this,arguments);  //wait for sizing
+            componentAdapter.afterRender.apply(this,arguments);
          },
          /** @private */
-         beforeDestroy : function(){
-            this.clearMedia();
-            ux.Window.superclass.beforeDestroy.call(this);
-         }
+        beforeDestroy   : function(){
+
+            componentAdapter.onDestroy.apply(this,arguments);
+            ux.Window.superclass.beforeDestroy.apply(this,arguments);
+
+         },
+
+        doAutoLoad : Ext.emptyFn
 
     });
 
-    //Inherit the Media class interface
-    Ext.apply(ux.Window.prototype, ux.prototype);
-    //then the Adaptor
-    Ext.apply(ux.Window.prototype, mediaComponentAdapter.prototype);
-    Ext.reg('mediawindow', Ext.ux.MediaWindow = ux.Window);
+    Ext.reg('mediawindow', ux.Window);
+
 
 
     Ext.onReady(function(){
         //Generate CSS Rules if not defined in markup
         var CSS = Ext.util.CSS, rules=[];
-        CSS.getRule('.x-media', true) || (rules.push('.x-media{width:100%;height:100%;display:block;overflow:none;outline:none;}'));
+
+        CSS.getRule('.x-media', true) || (rules.push('.x-media{width:100%;height:100%;outline:none;overflow:hidden;}'));
         CSS.getRule('.x-media-mask') || (rules.push('.x-media-mask{width:100%;height:100%;position:relative;zoom:1;}'));
 
         //default Rule for IMG:  h/w: auto;
-        CSS.getRule('.x-media-img') || (rules.push('.x-media-img{background-color:transparent;width:auto;height:auto;}'));
-
-        /* These two important rule solves many of the <object/iframe>.reInit issues encountered
-         * when setting display:none on an upstream(parent) element (on all Browsers except IE).
-         * This default rule enables the new Panel:hideMode 'nosize'. The rule is designed to
-         * set height/width to 0 cia CSS if hidden or collapsed.
-         * Additional selectors also hide 'x-panel-body's within layouts to prevent
-         * container and <object, img, iframe> bleed-thru.  (Also see ux.VisibilityFix below)
-         */
-        CSS.getRule('.x-hide-nosize') || (rules.push('.x-hide-nosize,.x-hide-nosize *{height:0px!important;width:0px!important;border:none!important;}'));
+        CSS.getRule('.x-media-img') || (rules.push('.x-media-img{background-color:transparent;width:auto;height:auto;position:relative;}'));
 
         if(!!rules.length){
              CSS.createStyleSheet(rules.join(''));
@@ -1122,216 +873,200 @@
 
     });
 
-  /* overrides add a third visibility feature to Ext.Element:
-    * Now an elements' visibility may be handled by application of a custom (hiding) CSS className.
-    * The class is removed to make the Element visible again
-    */
 
-    Ext.apply(Ext.Element.prototype, {
-      setVisible : function(visible, animate){
-            if(!animate || !Ext.lib.Anim){
-                if(this.visibilityMode === Ext.Element.DISPLAY){
-                    this.setDisplayed(visible);
-                }else if(this.visibilityMode === Ext.Element.VISIBILITY){
-                    this.fixDisplay();
-                    this.dom.style.visibility = visible ? "visible" : "hidden";
-                }else {
-                    this[visible?'removeClass':'addClass'](String(this.visibilityMode));
-                }
 
-            }else{
-                // closure for composites
-                var dom = this.dom;
-                var visMode = this.visibilityMode;
+    Ext.override(Ext.Element, {
 
-                if(visible){
-                    this.setOpacity(.01);
-                    this.setVisible(true);
-                }
-                this.anim({opacity: { to: (visible?1:0) }},
-                      this.preanim(arguments, 1),
-                      null, .35, 'easeIn', function(){
+         /**
+          * Puts a mask over the element to disable user interaction. Requires core.css.
+          * @param {String} msg (optional) A message to display in the mask
+          * @param {String} msgCls (optional) A css class to apply to the msg element
+          * @return {Element} The mask element
+          */
+         mask : function(msg, msgCls){
 
-                         if(!visible){
-                             if(visMode === Ext.Element.DISPLAY){
-                                 dom.style.display = "none";
-                             }else if(visMode === Ext.Element.VISIBILITY){
-                                 dom.style.visibility = "hidden";
-                             }else {
-                                 Ext.get(dom).addClass(String(visMode));
-                             }
-                             Ext.get(dom).setOpacity(1);
+             if(this._maskMsg){
+                 this._maskMsg.remove();
+             }
+             if(this._mask){
+                 this._mask.remove();
+             }
+
+              if(this.getStyle("position") == "static"){
+                  this._preMaskPosition = 'static';
+                  this.setStyle("position", "relative");
+              }
+
+             this._mask = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask"}, true);
+
+             if(!this.select('iframe,frame,object,embed').elements.length){
+                 this.addClass("x-masked");  //causes element re-init after reflow (overflow:hidden)
+             }
+             this._mask.setDisplayed(true);
+             if(typeof msg == 'string'){
+                 this._maskMsg = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask-msg", cn:{tag:'div'}}, true);
+                 var mm = this._maskMsg;
+                 mm.dom.className = msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg";
+                 mm.dom.firstChild.innerHTML = msg;
+                 mm.setDisplayed(true);
+                 mm.center(this);
+             }
+             if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
+                 this._mask.setSize(this.dom.clientWidth, this.getHeight());
+             }
+             return this._mask;
+         },
+
+         /**
+          * Removes a previously applied mask.
+          */
+         unmask : function(){
+
+             if(this._mask){
+                 if(this._preMaskPosition) {
+                     this.setStyle("position", this._preMaskPosition);
+                 }
+
+                 if(this._maskMsg){
+                     this._maskMsg.remove();
+                     delete this._maskMsg;
+                 }
+
+                 this._mask.remove();
+                 delete this._mask;
+             }
+             this.removeClass("x-masked");
+
+         },
+
+        /**
+          * Removes this element from the DOM and deletes it from the cache
+          * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
+          * @param {Boolean} deep (optional) Perform a deep cleanse of all nested childNodes as well.
+          */
+
+        remove : function(cleanse, deep){
+              if(this.dom){
+                this.removeAllListeners();    //remove any Ext-defined DOM listeners
+                if(cleanse){ this.cleanse(true, deep); }
+                Ext.removeNode(this.dom);
+                this.maskEl = null;
+                this.dom = null;  //clear ANY DOM references
+                delete this.dom;
+
+              }
+         },
+
+        /**
+         * Deep cleansing childNode Removal
+         * @param {Boolean} forceReclean (optional) By default the element
+         * keeps track if it has been cleansed already so
+         * you can call this over and over. However, if you update the element and
+         * need to force a reclean, you can pass true.
+         * @param {Boolean} deep (optional) Perform a deep cleanse of all childNodes as well.
+         */
+        cleanse : function(forceReclean, deep){
+            if(this.isCleansed && forceReclean !== true){
+                return this;
+            }
+
+            var d = this.dom, n = d.firstChild, nx;
+             while(d && n){
+                 nx = n.nextSibling;
+                 if(deep){
+                         Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
                          }
-                     });
-            }
-            return this;
-        },
-        /**
-         * Checks whether the element is currently visible using both visibility and display properties.
-         * @param {Boolean} deep (optional) True to walk the dom and see if parent elements are hidden (defaults to false)
-         * @return {Boolean} True if the element is currently visible, else false
-         */
-        isVisible : function(deep) {
-            var vis = !(this.getStyle("visibility") === "hidden" || this.getStyle("display") === "none" || this.hasClass(this.visibilityMode));
-            if(deep !== true || !vis){
-                return vis;
-            }
-            var p = this.dom.parentNode;
-            while(p && p.tagName.toLowerCase() !== "body"){
-                if(!Ext.fly(p, '_isVisible').isVisible()){
-                    return false;
-                }
-                p = p.parentNode;
-            }
-            return true;
-        } });
-
-        var ElementMaskFixes = {
-          mask : function(msg, msgCls,maskCls){
-            if(this.getStyle("position") == "static"){
-                this.setStyle("position", "relative");
-            }
-            if(this._maskMsg){
-                this._maskMsg.remove();
-            }
-
-            this._mask || (this._mask = Ext.DomHelper.append(this.dom, {cls:maskCls || "ext-el-mask"}, true));
-
-            //removed, causes DOM reflow on non-IE browsers when
-            //overflow:hidden is applied to <object>'s parent Element
-            //and <object>'s go to sleep when visibility:hidden is applied.
-
-            !Ext.isIE || this.addClass("x-masked");
-
-            this._mask.setVisible(true);
-
-            if(typeof msg == 'string'){
-
-                var mm = this._maskMsg = Ext.DomHelper.append(this.dom,
-                 {
-                     cls:"ext-el-mask-msg " + msgCls || ''
-                    ,style:{
-                        visibility:'hidden'
-                     }
-                     ,cn:{tag:'div',html:msg }
-                    }, true);
-
-                 var el = this.dom;
-                 (function(){
-                    try{ mm.center(el).setVisible(true); } catch(e){}
-                 }).defer(4);
-
-            }
-            if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
-                   this._mask.setSize(this.dom.clientWidth, this.getHeight());
-            }
-            return this._mask;
-        },
-        /**
-         * Removes a previously applied mask.
-         */
-        unmask : function(remove){
-
-            if(this._maskMsg){
-                if(remove){
-                    this._maskMsg.remove();
-                    delete this._maskMsg;
-                } else {
-                    this._maskMsg.setVisible.defer(4,this._maskMsg,[false]);
-                }
-            }
-            if(this._mask){
-                 if(remove){
-                    this._mask.remove();
-                    delete this._mask;
-                } else {
-                    this._mask.setVisible(false);
-                }
-            }
-
-            this.removeClass("x-masked");
-       }
-     };
-
-
-
-    /* Ext.ux.Media.VisibilityFix plugin.
-
-      This plugin provides an alternate visibility mode to Components that support hideMode.
-      If included in a Component, it sets the hideMode
-
-      config options
-           elements(array,optional)      :  [list of component members to also adjust visibility for]  (eg. ['bwrap','toptoolbar']
-             mode (string,optional)      :   a specific CSS classname (or 1 or 2 ) to use for custom visibility
-           hideMide (string;default 'nosize'):  the Component hideMode to assign
-
-       Examples:
-
-       .add({
-           xtype:'panel',
-           plugins: [new Ext.ux.Media.VisibilityFix({mode:'x-hide-nosize'}) ],
-           ...
-         });
-
-         //or, enable on parent and all child items:
-
-         var V = new Ext.ux.Media.VisibilityFix({mode:'x-hide-nosize'});
-         new Ext.TabPanel({
-            plugins: V,
-            defaults: {
-                plugins: V
-            },
-            items:[....]
-         });
-    */
-
-    ux.VisibilityFix = function(opt) {
-        opt||(opt={});
-
-        this.init = function(c) {
-
-               c.hideMode = opt.hideMode || c.hideMode;
-
-               c.on('render',
-                 function(co){
-
-                    var els = [co.collapseEl, (co.floating? null: co.actionMode)].concat(opt.elements||[]);
-                    var El = Ext.Element;
-
-                    var mode = opt.mode || co.visibilityCls || El[co.hideMode.toUpperCase()] || El.VISIBILITY;
-
-                    Ext.each(els, function(el){
-                        var e = co[el] || el;
-                        if(e && e.setVisibilityMode){e.setVisibilityMode(mode);}
-                    });
-
-                 },
-                 c,
-                 {single:true}
-               );
-
-        };
-
-
-    };
+                 Ext.removeNode(n);
+                 n = nx;
+             }
+             this.isCleansed = true;
+             return this;
+         }
+    });
 
     /**
-     * @class Ext.ux.Media.MediaMask
-     * A custom utility class for generically masking elements while loading media.
+     * @class Ext.ux.Media.Element
+     * @extends Ext.Element
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     */
+    Ext.ux.Media.Element = Ext.extend ( Ext.Element , {
+
+        visibilityMode  : 'x-hide-nosize',
+        /**
+        * @private
+        */
+        constructor   : function( element ) {
+
+            if(!element ){ return null; }
+
+            var dom = typeof element == "string" ? d.getElementById(element) : element.dom || element ;
+
+            if(!dom ){ return null; }
+
+            /**
+             * The DOM element
+             * @type HTMLElement
+             */
+            this.dom = dom;
+            /**
+             * The DOM element ID
+             * @type String
+             */
+            this.id = dom.id || Ext.id(dom);
+
+            Ext.Element.cache[this.id] = this;
+
+        },
+
+        /**
+         * <object|frame|img> are not maskable by the default Element mask implementation.
+         * This selects the immediate parent element as the mask target.
+
+         * Puts a mask over the element to disable user interaction. Requires core.css.
+         * @param {String} msg (optional) A message to display in the mask
+         * @param {String} msgCls (optional) A css class to apply to the msg element
+         * @return {Element} The mask element
+         */
+        mask : function(msg, msgCls){
+
+            this.maskEl || (this.maskEl = this.parent('.x-media-mask') || this.parent());
+
+            return this.maskEl.mask.apply(this.maskEl, arguments);
+
+        },
+        unmask : function(){
+
+            if(this.maskEl){
+                this.maskEl.unmask();
+                this.maskEl = null;
+            }
+        }
+
+
+    });
+
+    Ext.ux.Media.prototype.elementClass  =  Ext.ux.Media.Element;
+
+    /**
+     * @class Ext.ux.IntelliMask
+     * @version 1.0.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @constructor
      * Create a new LoadMask
-     * @param {Mixed} el The element or DOM node, or its id
-     * @param {Object} config The config object
+     * @desc A custom utility class for generically masking elements while loading media.
      */
     Ext.ux.IntelliMask = function(el, config){
 
         Ext.apply(this, config);
         this.el = Ext.get(el);
-        this.removeMask = Ext.value(this.removeMask, true);
-
-        if(el && this.fixElementForMedia){
-            Ext.apply(el, ElementMaskFixes );
-        }
+        this.removeMask = Ext.value(config.removeMask, true);
 
     };
 
@@ -1342,38 +1077,42 @@
          * True to create a single-use mask that is automatically destroyed after loading (useful for page loads),
          * False to persist the mask element reference for multiple uses (e.g., for paged data widgets).  Defaults to false.
          */
+
+         removeMask  : true,
+
         /**
-         * @cfg {String} msg
-         * The text to display in a centered loading message box (defaults to 'Loading Media...')
+         * @cfg {String} msg The default text to display in a centered loading message box
+         * @default 'Loading Media...'
          */
         msg : 'Loading Media...',
         /**
          * @cfg {String} msgCls
-         * The CSS class to apply to the loading message element (defaults to "x-mask-loading")
+         * The CSS class to apply to the loading message element.
+         * @default "x-mask-loading"
          */
         msgCls : 'x-mask-loading',
 
 
-        /** @cfg {Number} zIndex
-         * the optional zIndex applied to the masking Elements
+        /** @cfg {Number} zIndex The optional zIndex applied to the masking Elements
          */
         zIndex : null,
 
         /**
          * Read-only. True if the mask is currently disabled so that it will not be displayed (defaults to false)
+         * @property {Boolean} disabled
          * @type Boolean
          */
         disabled: false,
 
         /**
          * Read-only. True if the mask is currently applied to the element.
+         * @property {Boolean} active
          * @type Boolean
          */
         active: false,
 
         /**
-         * True or millisecond value hides the mask if the @hide method is not called within the specified time limit.
-         * @cfg {Boolean/Integer} (true, millisecond timeout, false)
+         * @cfg {Boolean/Integer} autoHide  True or millisecond value hides the mask if the {link #hide} method is not called within the specified time limit.
          */
         autoHide: false,
 
@@ -1393,12 +1132,16 @@
 
         /**
          * Show this Mask over the configured Element.
-         * Typical usage:
-
+         * @param {String/ConfigObject} msg The message text do display during the masking operation
+         * @param {String} msgCls The CSS rule applied to the message during the masking operation.
+         * @param {Function} fn The callback function to be invoked after the mask is displayed.
+         * @param {Integer} fnDelay The number of milleseconds to wait before invoking the callback function
+         * @return {Ext.Element} the mask container element.
+         * @example
            mask.show({autoHide:3000});   //show defaults and hide after 3 seconds.
-
+         * @example
            mask.show('Loading Content', null, loadContentFn); //show msg and execute fn
-
+         * @example
            mask.show({
                msg: 'Loading Content',
                msgCls : 'x-media-loading',
@@ -1409,9 +1152,7 @@
            });
          */
         show: function(msg, msgCls, fn, fnDelay ){
-            if(this.disabled || !this.el){
-                return null;
-            }
+
             var opt={}, autoHide = this.autoHide;
             fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
 
@@ -1423,18 +1164,21 @@
                 autoHide = typeof opt.autoHide != 'undefined' ?  opt.autoHide : autoHide;
                 fnDelay = opt.fnDelay || fnDelay ;
             }
+            if(!this.active && !this.disabled && this.el){
+                var mask = this.el.mask(msg || this.msg, msgCls || this.msgCls);
 
-            var mask = this.el.mask(msg || this.msg, msgCls || this.msgCls);
-
-            this.active = !!this.el._mask;
-            if(this.active){
-                if(this.zIndex){
-                    this.el._mask.setStyle("z-index", this.zIndex);
-                    if(this.el._maskMsg){
-                        this.el._maskMsg.setStyle("z-index", this.zIndex+1);
+                this.active = !!this.el._mask;
+                if(this.active){
+                    if(this.zIndex){
+                        this.el._mask.setStyle("z-index", this.zIndex);
+                        if(this.el._maskMsg){
+                            this.el._maskMsg.setStyle("z-index", this.zIndex+1);
+                        }
                     }
                 }
-            }
+            } else {fnDelay = 0;}
+
+            //passed function is called regardless of the mask state.
             if(typeof fn === 'function'){
                 fn.defer(fnDelay ,opt.scope || null);
             } else { fnDelay = 0; }
@@ -1447,7 +1191,8 @@
         },
 
         /**
-         * Hide this mediaMask.
+         * Hide this Mask.
+         * @param {Boolean} remove  True to remove the mask element from the DOM after hide.
          */
         hide: function(remove){
             if(this.el){
@@ -1461,7 +1206,554 @@
         destroy : function(){this.hide(true); this.el = null; }
      };
 
-})();
+
+
+/**
+ * @namespace Ext.ux.Media.mediaTypes
+ */
+Ext.ux.Media.mediaTypes =
+     {
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.PDF
+         */
+
+       PDF : Ext.apply({  //Acrobat plugin thru release 8.0 all crash FF3
+                tag     : 'object'
+               ,cls     : 'x-media x-media-pdf'
+               ,type    : "application/pdf"
+               ,data    : "@url"
+               ,autoSize:true
+               ,params  : { src : "@url" }
+
+               },Ext.isIE?{
+                   classid :"CLSID:CA8A9780-280D-11CF-A24D-444553540000"
+                   }:false),
+
+
+      /**
+       * @namespace Ext.ux.Media.mediaTypes.PDFFRAME
+       * @desc Most reliable method for Acrobat on all browsers!!
+       */
+      PDFFRAME  : {
+                  tag      : 'iframe'
+                 ,cls      : 'x-media x-media-pdf-frame'
+                 ,frameBorder : 0
+                 ,style    : { 'z-index' : 2}
+                 ,src      : "@url"
+                 ,autoSize :true
+        },
+
+       /**
+         * @namespace Ext.ux.Media.mediaTypes.WMV
+         * @desc <pre><code>WMV Interface Notes
+           On IE only, to retrieve the object interface (for controlling player via JS)
+            use mediaComp.getInterface().object.controls
+
+           For all other browsers use: mediaComp.getInterface().controls
+           Related DOM attributes for WMV:
+                 DataFormatAs :
+                 Name :
+                 URL :
+                 OpenState:6
+                 PlayState:0
+                 Controls :
+                 Settings :
+                 CurrentMedia:null
+                 MediaCollection :
+                 PlaylistCollection :
+                 VersionInfo:9.0.0.3008
+                 Network :
+                 CurrentPlaylist :
+                 CdromCollection :
+                 ClosedCaption :
+                 IsOnline:false
+                 Error :
+                 Status :
+                 Dvd :
+                 Enabled:true
+                 FullScreen:false
+                 EnableContextMenu:true
+                 UiMode:full
+                 StretchToFit:false
+                 WindowlessVideo:false
+                 IsRemote:false</code></pre>
+        */
+
+
+      WMV : Ext.apply(
+              {tag      :'object'
+              ,cls      : 'x-media x-media-wmv'
+              ,type     : 'application/x-mplayer2'
+              ,data     : "@url"
+              ,autoSize : false
+              ,params  : {
+
+                  filename     : "@url"
+                 ,displaysize  : 0
+                 ,autostart    : "@start"
+                 ,showControls : "@controls"
+                 ,showStatusBar: "@status"
+                 ,showaudiocontrols : true
+                 ,stretchToFit  : true
+                 ,Volume        :"@volume"
+                 ,PlayCount     : 1
+
+               }
+               },Ext.isIE?{
+                   classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
+                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+                   ,type:'application/x-oleobject'
+                   }:
+                   {src:"@url"}),
+
+     /**
+       * @namespace Ext.ux.Media.mediaTypes.SWF
+       */
+
+
+       SWF   :  Ext.apply({
+                  tag      :'object'
+                 ,cls      : 'x-media x-media-swf'
+                 ,type     : 'application/x-shockwave-flash'
+                 ,scripting: 'sameDomain'
+                 ,standby  : 'Loading..'
+                 ,loop     :  true
+                 ,start    :  false
+                 ,unsupportedText : {cn:['The Adobe Flash Player is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]}
+                 ,params   : {
+                      movie     : "@url"
+                     ,menu      : "@controls"
+                     ,play      : "@start"
+                     ,quality   : "high"
+                     ,allowscriptaccess : "@scripting"
+                     ,allownetworking : 'all'
+                     ,allowfullScreen : false
+                     ,bgcolor   : "#FFFFFF"
+                     ,wmode     : "opaque"
+                     ,loop      : "@loop"
+                    }
+
+                },Ext.isIE?
+                    {classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
+                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
+                    }:
+                    {data     : "@url"}),
+      /**
+       * @namespace Ext.ux.Media.mediaTypes.JWP
+       * @see http://code.jeroenwijering.com/trac/wiki/FlashAPI
+       */
+
+        JWP :  Ext.apply({
+              tag      :'object'
+             ,cls      : 'x-media x-media-swf x-media-flv'
+             ,type     : 'application/x-shockwave-flash'
+             ,data     : "@url"
+             ,loop     :  false
+             ,start    :  false
+             //ExternalInterface bindings
+             ,boundExternals : ['sendEvent' , 'addModelListener', 'addControllerListener', 'addViewListener', 'getConfig', 'getPlaylist']
+             ,params   : {
+                 movie     : "@url"
+                ,flashVars : {
+                               autostart:'@start'
+                              ,repeat   :'@loop'
+                              ,height   :'@height'
+                              ,width    :'@width'
+                              ,id       :'@id'
+                              }
+                }
+
+        },Ext.isIE?{
+             classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"
+            ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0"
+            }:false),
+
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.QT
+         * @desc QT references: http://developer.apple.com/documentation/quicktime/Conceptual/QTScripting_JavaScript/aQTScripting_Javascro_AIntro/chapter_1_section_1.html
+         */
+        QT : Ext.apply({
+                       tag      : 'object'
+                      ,cls      : 'x-media x-media-quicktime'
+                      ,type     : "video/quicktime"
+                      ,style    : {position:'relative',"z-index":1 ,behavior:'url(#qt_event_source)'}
+                      ,scale    : 'aspect'  // ( .5, 1, 2 , ToFit, Aspect )
+                      ,unsupportedText : '<a href="http://www.apple.com/quicktime/download/">Get QuickTime</a>'
+                      ,scripting : true
+                      ,volume   : '50%'
+                      ,data     : '@url'
+                      ,params   : {
+                           src          : Ext.isIE?'@url': null
+                          ,href        : "http://quicktime.com"
+                          ,target      : "_blank"
+                          ,autoplay     : "@start"
+                          ,targetcache  : true
+                          ,cache        : true
+                          ,wmode        : 'transparent'
+                          ,controller   : "@controls"
+                      ,enablejavascript : "@scripting"
+                          ,loop         : '@loop'
+                          ,scale        : '@scale'
+                          ,volume       : '@volume'
+                          ,QTSRC        : '@url'
+
+                       }
+
+                     },Ext.isIE?
+                          { classid      :'clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B'
+                           ,codebase     :"http" + ((Ext.isSecure) ? 's' : '') + '://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
+
+                       }:
+                       {
+                         PLUGINSPAGE  : "http://www.apple.com/quicktime/download/"
+
+                    }),
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.QTEVENTS
+         * @desc For QuickTime DOM event support include this <object> tag structure in the <head> section
+         */
+
+
+        QTEVENTS : {
+                   tag      : 'object'
+                  ,id       : 'qt_event_source'
+                  ,cls      : 'x-media x-media-qtevents'
+                  ,type     : "video/quicktime"
+                  ,params   : {}
+                  ,classid      :'clsid:CB927D12-4FF7-4a9e-A169-56E4B8A75598'
+                  ,codebase     :"http" + ((Ext.isSecure) ? 's' : '') + '://www.apple.com/qtactivex/qtplugin.cab#version=7,2,1,0'
+                 },
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.WPMP3
+         * @desc WordPress Audio Player : http://wpaudioplayer.com/
+         */
+
+        WPMP3 : Ext.apply({
+                       tag      : 'object'
+                      ,cls      : 'x-media x-media-audio x-media-wordpress'
+                      ,type     : 'application/x-shockwave-flash'
+                      ,data     : '@url'
+                      ,start    : true
+                      ,loop     : false
+                      ,boundExternals : ['open','close','setVolume','load']
+                      ,params   : {
+                           movie        : "@url"
+                          ,width        :'@width'  //required
+                          ,flashVars : {
+                               autostart    : "@start"
+                              ,controller   : "@controls"
+                              ,enablejavascript : "@scripting"
+                              ,loop         :'@loop'
+                              ,scale        :'@scale'
+                              ,initialvolume:'@volume'
+                              ,width        :'@width'  //required
+                              ,encode       : 'no'  //mp3 urls will be encoded
+                              ,soundFile    : ''   //required
+                          }
+                       }
+                    },Ext.isIE?{classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000"}:false),
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.REAL
+         * @desc Real Player
+         */
+
+        REAL : Ext.apply({
+                tag     :'object'
+               ,cls     : 'x-media x-media-real'
+               ,type    : "audio/x-pn-realaudio"
+               ,data    : "@url"
+               ,controls: 'imagewindow,all'
+               ,start   : false
+               ,standby : "Loading Real Media Player components..."
+               ,params   : {
+                          src        : "@url"
+                         ,autostart  : "@start"
+                         ,center     : false
+                         ,maintainaspect : true
+                         ,controller : "@controls"
+                         ,controls   : "@controls"
+                         ,volume     :'@volume'
+                         ,loop       : "@loop"
+                         ,console    : "_master"
+                         ,backgroundcolor : '#000000'
+                         }
+
+                },Ext.isIE?{classid :"clsid:CFCDAA03-8BE4-11CF-B84B-0020AFBBCCFA"}:false),
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.SVG
+         * @desc Generic SVG
+         */
+
+        SVG : {
+                  tag      : 'object'
+                 ,cls      : 'x-media x-media-img x-media-svg'
+                 ,type     : "image/svg+xml"
+                 ,data     : "@url"
+                 ,params   : { src : "@url"}
+
+        },
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.GIF
+         * @desc
+         */
+
+        GIF : {
+                  tag      : 'img'
+                 ,cls      : 'x-media x-media-img x-media-gif'
+                 ,src     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.JPEG
+         */
+
+        JPEG : {
+                  tag      : 'img'
+                 ,cls      : 'x-media x-media-img x-media-jpeg'
+                 //,style    : {overflow:'hidden', display:'inline'}
+                 ,src     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.JP2
+         */
+
+        JP2 :{
+                  tag      : 'object'
+                 ,cls      : 'x-media x-media-img x-media-jp2'
+                 ,type     : "image/jpeg2000-image"
+                 ,data     : "@url"
+                },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.PNG
+         */
+        PNG : {
+                  tag      : 'img'
+                 ,cls      : 'x-media x-media-img x-media-png'
+                 ,src     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.HTM
+         */
+
+        HTM : {
+                  tag      : 'iframe'
+                 ,cls      : 'x-media x-media-html'
+                 ,frameBorder : 0
+                 ,autoSize : true
+                 ,style    : {overflow:'auto', 'z-index' : 2}
+                 ,src     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.TXT
+         */
+
+        TXT : {
+                  tag      : 'object'
+                 ,cls      : 'x-media x-media-text'
+                 ,type     : "text/plain"
+                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
+                 ,data     : "@url"
+        },
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.RTF
+         */
+
+        RTF : {
+                  tag      : 'object'
+                 ,cls      : 'x-media x-media-rtf'
+                 ,type     : "application/rtf"
+                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
+                 ,data     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.JS
+         */
+
+        JS : {
+                  tag      : 'object'
+                 ,cls      : 'x-media x-media-js'
+                 ,type     : "text/javascript"
+                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
+                 ,data     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.CSS
+         */
+
+        CSS : {
+                  tag      : 'object'
+                 ,cls      : 'x-media x-media-css'
+                 ,type     : "text/css"
+                 ,style    : {overflow:'auto',width:'100%',height:'100%'}
+                 ,data     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.SILVERLIGHT
+         */
+
+        SILVERLIGHT : {
+              tag      : 'object'
+             ,cls      : 'x-media x-media-silverlight'
+             ,type      :"application/ag-plugin"
+             ,data     : "@url"
+             ,params  : { MinRuntimeVersion: "1.0" , source : "@url" }
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.SILVERLIGHT2
+         */
+
+        SILVERLIGHT2 : {
+              tag      : 'object'
+             ,cls      : 'x-media x-media-silverlight'
+             ,type      :"application/x-silverlight-2-b2"
+             ,data     : "data:application/x-silverlight-2-b2,"
+             ,params  : { MinRuntimeVersion: "2.0" }
+             ,unsupportedText: '<a href="http://go2.microsoft.com/fwlink/?LinkID=114576&v=2.0"><img style="border-width: 0pt;" alt="Get Microsoft Silverlight" src="http://go2.microsoft.com/fwlink/?LinkID=108181"/></a>'
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.DATAVIEW
+         */
+
+        DATAVIEW : {
+              tag      : 'object'
+             ,cls      : 'x-media x-media-dataview'
+             ,classid  : 'CLSID:0ECD9B64-23AA-11D0-B351-00A0C9055D8E'
+             ,type     : 'application/x-oleobject'
+             ,unsupportedText: 'MS Dataview Control is not installed'
+
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.OWCXLS
+         */
+
+        "OWCXLS" : Ext.apply({     //experimental IE only
+              tag      : 'object'
+             ,cls      : 'x-media x-media-xls'
+             ,type      :"application/vnd.ms-excel"
+             ,controltype: "excel"
+             ,params  : { DataType : "CSVURL"
+                        ,CSVURL : '@url'
+                        ,DisplayTitleBar : true
+                        ,AutoFit         : true
+                     }
+             },Ext.isIE?{
+                   codebase: "file:msowc.cab"
+                  ,classid :"CLSID:0002E510-0000-0000-C000-000000000046" //owc9
+                 //classid :"CLSID:0002E550-0000-0000-C000-000000000046" //owc10
+                 //classid :"CLSID:0002E559-0000-0000-C000-000000000046" //owc11
+
+                 }:false),
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.OWCCHART
+         */
+
+        "OWCCHART" : Ext.apply({     //experimental
+              tag      : 'object'
+             ,cls      : 'x-media x-media-xls'
+             ,type      :"application/vnd.ms-excel"
+             ,data     : "@url"
+             ,params  : { DataType : "CSVURL" }
+             },Ext.isIE?{
+                    classid :"CLSID:0002E500-0000-0000-C000-000000000046" //owc9
+                  //classid :"CLSID:0002E556-0000-0000-C000-000000000046" //owc10
+                  //classid :"CLSID:0002E55D-0000-0000-C000-000000000046" //owc11
+                 }:false),
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.OFFICE
+         */
+
+        OFFICE : {
+              tag      : 'object'
+             ,cls      : 'x-media x-media-office'
+             ,type      :"application/x-msoffice"
+             ,data     : "@url"
+        },
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.POWERPOINT
+         */
+
+        POWERPOINT : Ext.apply({     //experimental
+                      tag      : 'object'
+                     ,cls      : 'x-media x-media-ppt'
+                     ,type     :"application/vnd.ms-powerpoint"
+                     ,file     : "@url"
+                     },Ext.isIE?{classid :"CLSID:EFBD14F0-6BFB-11CF-9177-00805F8813FF"}:false),
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.XML
+         */
+
+        XML : {
+              tag      : 'iframe'
+             ,cls      : 'x-media x-media-xml'
+             ,style    : {overflow:'auto'}
+             ,src     : "@url"
+        },
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.VLC
+         */
+
+        //VLC ActiveX Player -- Suffers the same fate as the Acrobat ActiveX Plugin
+        VLC : Ext.apply({
+              tag      : 'object'
+             ,cls      : 'x-media x-media-vlc'
+             ,type     : "application/x-vlc-plugin"
+             ,version  : "VideoLAN.VLCPlugin.2"
+             ,pluginspage:"http://www.videolan.org"
+             ,events   : true
+             ,start    : false
+             ,params   : {
+                   Src        : "@url"
+                  ,MRL        : "@url"
+                  ,autoplay  :  "@start"
+                  ,ShowDisplay: "@controls"
+                  ,Volume     : '@volume'
+                  ,Autoloop   : "@loop"
+
+                }
+
+             },Ext.isIE?{
+                  classid :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
+                 ,CODEBASE :"http://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
+             }:false),
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.RDP
+         */
+
+         RDP : Ext.apply({
+              tag      : 'object'
+             ,cls      : 'x-media x-media-rdp'
+             ,type     : "application/rds"
+             ,unsupportedText: "Remote Desktop Web Connection ActiveX control is required. <a target=\"_msd\" href=\"http://go.microsoft.com/fwlink/?linkid=44333\">Download it here</a>."
+             ,params:{
+                  Server         : '@url'
+                 ,Fullscreen     : false
+                 ,StartConnected : false
+                 ,DesktopWidth   : '@width'
+                 ,DesktopHeight  : '@height'
+             }
+
+         },Ext.isIE?{
+             classid :"CLSID:9059f30f-4eb1-4bd2-9fdc-36f43a218f4a"
+            ,CODEBASE :"msrdp.cab#version=5,2,3790,0"
+
+
+         }:false)
+
+    };
+
+
+
+
+
 if (Ext.provide) {
     Ext.provide('uxmedia');
 }
@@ -1487,3 +1779,14 @@ Ext.applyIf(Array.prototype, {
         return res;
     }
 });
+
+
+
+/* Previous Release compatability: */
+
+Ext.ux.MediaComponent = Ext.ux.Media.Component;
+Ext.ux.MediaPanel     = Ext.ux.Media.Panel;
+Ext.ux.MediaPortlet   = Ext.ux.Media.Portlet;
+Ext.ux.MediaWindow    = Ext.ux.Media.Window;
+
+})();

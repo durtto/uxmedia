@@ -10,8 +10,9 @@
     <script type="text/javascript" src="../../adapter/ext/ext-base.js"></script>
     <!-- ENDLIBS -->
 
-    <script type="text/javascript" src="../../ext-all-debug.js"></script>
-
+    <script type="text/javascript" src="../../ext-all.js"></script>
+    <script type="text/javascript" src="../debug.js"></script>
+    <script type="text/javascript" src="uxvismode.js"></script>
     <script type="text/javascript" src="uxmedia.js"></script>
     <script type="text/javascript" src="uxflash.js"></script>
     <script type="text/javascript" src="mediademo.js"></script>
@@ -21,11 +22,11 @@
 
     <style type="text/css">
 
-    #background {margin:5px;}
+    #background {margin:5px;display:block;}
 
     .list {list-style:square;width:500px;padding-left:26px;}
     .list li{padding:2px;font-size:10pt;}
-     body { font-family:verdana,geneva,lucida,'lucida grande',arial,helvetica,sans-serif }
+     body { font-family:verdana,geneva,lucida,'lucida grande',arial,helvetica,sans-serif;overflow:hidden; height:100%; display:block;}
 
     </style>
 </head>
@@ -68,7 +69,7 @@
 <h2>Render Media <b>inline</b> in page markup.</h2>
 <p>You can now render any Media type (including derived classes)&nbsp;<span><script type="text/javascript">
     document.write(mclock=new Ext.ux.Media.Flash({mediaCfg:{
-                             //mediaType   : 'SWF'
+
                             url    : 'clock.swf'
                             ,id     : 'inlineClock'
                             ,style  : {display:'inline', width:'100px',height:'80px'}
@@ -76,7 +77,7 @@
                             ,loop     : true
                             ,controls :false
                             ,params: {
-                                wmode     :'opaque'
+                                wmode     :'transparent'
                                ,scale     :'exactfit'
                                ,salign    :'t'
                             }
@@ -84,9 +85,9 @@
  <pre>
 &lt;span>&lt;script type="text/javascript">
        document.write(
-               new Ext.ux.Media(
+               new Ext.ux.Media.Flash(
                  {mediaCfg:{
-                     mediaType   : 'SWF'
+
                     ,url    : 'clock.swf'
                     ,id     : 'inlineClock'
                     ,style  : {display:'inline', width:'100px',height:'80px'}

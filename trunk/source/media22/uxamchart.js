@@ -1,17 +1,13 @@
 /* global Ext */
-/**
- * @class Ext.ux.Chart.amChart
- * @version 1.0
- * @author Doug Hendricks. doug[always-At]theactivegroup.com
- * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
- *
+/*
+
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
  *   without even the implied warranty of MERCHANTABILITY or
  *   FITNESS FOR A PARTICULAR PURPOSE.
  ************************************************************************************
 
-     License: Ext.ux.Chart.amChart is licensed under the
+     License: Ext.ux.Chart.amChart/amStock is licensed under the
      terms of : GNU Open Source GPL 3.0 license:
 
      This program is free software for non-commercial use: you can redistribute
@@ -29,36 +25,9 @@
 
    Donations are welcomed: http://donate.theactivegroup.com
 
-   Commercial use is prohibited without a Commercial License. See http://licensing.theactivegroup.com.
+   Commercial use is prohibited without a Commercial License.
+   See http://licensing.theactivegroup.com for more details on Commercial Licensing.
 
- Component Config Options:
-
-   chartUrl    : the URL of the desired amChart_Chart_Object.swf
-   chartData   : String stream containing chart layout config and data series.
-   dataUrl     : the URL of a remote dataXML resource
-   settingsUrl : This line tells amline.swf the name of a settings file. The charts can have more than one setting file.
-
-   loadMask    : loadMask config, true, or false. applied during data load operations.
-   mediaMask   : loadMask config, true, or false. applied while the SWF object is loading( not the data)
-   autoMask    : true permits the Component to automatically manage the media and load masks.
-   chartCfg  : {  //optional
-            id    : String   id of <object> tag
-            style : Obj  optional DomHelper style config object
-            height : Fixed/percentage height of the chart object
-            width  : Fixed/percentage width of the chart object
-            params: {
-
-                flashVars : {
-                    path        : This line tells the amline.swf where it should look for all the additional files, such as fonts, export as image files, custom icons. Do not forget to add "/" at the end of this line.
-                    chart_settings : This line is used for including settings directly in the HTML file instead of loading them from an external file.
-                    additional_chart_settings : This line is used for appending settings to the ones you loaded from a file or set with the chart_settings (the line above).
-                    loading_settings : If you want to change the "Loading settings" text that is displayed while the settings are loaded, you can set your own text here.
-                    loading_data : If you want to change the "Loading data" text that is displayed while the data is loaded, you can set your own text here.
-                    preloader_color : The loading bar and text of a loading message can be set here.
-
-                }
-            }
-        }
 
  This class inherits from (thus requires) the :
      ux.Media(uxmedia.js),
@@ -68,17 +37,50 @@
 
 */
 (function(){
-    Ext.namespace("Ext.ux.Chart");
+    Ext.namespace("Ext.ux.Chart.amChart");
 
     var chart = Ext.ux.Chart;
-
-    var amchartAdapter = Ext.extend( chart.FlashAdapter, {
+    /**
+     * @class Ext.ux.Chart.amChart.Adapter
+     * @extends Ext.ux.Chart.FlashAdapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @abstract
+     */
+    Ext.ux.Chart.amChart.Adapter = Ext.extend( Ext.ux.Chart.FlashAdapter, {
 
        /**
         * @cfg {String|Float} requiredVersion The required Flash version necessary to support this Chart object.
         * @default "8"
         */
        requiredVersion : 8,
+
+        /**
+         * @cfg {String} settingsURL The URL of the related chart settings XML file.
+         *
+         */
+       settingsURL     : null,
+
+        /**
+           * @cfg {String} chartURL Url of the Flash Chart object.
+         */
+
+        chartURL : null,
+
+
+      /**
+       * @cfg {Object/JSONstring/Function} chartData Chart data series to load when initially rendered. <p> May be an object, JSONString, or Function that returns either.
+       */
+        chartData  : null,
+
+      /**
+       * @cfg {String} dataURL Url of the chart series to load when initially rendered.
+       */
+
+        dataURL  : null,
+
 
        /** @private */
        initMedia   : function(){
@@ -87,57 +89,89 @@
            this.addEvents(
 
                /**
-                * @event returndata
                 * Fires when you request data from a chart by calling the getData() function.
-                * @param {Ext.ux.Chart} this
-                * @param {object} the underlying chart component DOM reference
-                * @param {Mixed} The data
+                * @event returndata
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                * @param {Mixed} data The data
                 */
 
                'returndata',
 
               /**
-               * @event returnsettings
                * Fires when you request settings from a chart by calling the getSettings() function.
-               * @param {Ext.ux.Chart} this
-               * @param {object} the underlying chart component DOM reference
-               * @param {Mixed} The settings
+               * @event returnsettings
+               * @param {Ext.ux.Chart} chart this Chart Component
+               * @param {Element} chartObject the underlying chart component DOM reference
+               * @param {Mixed} settings The settings
                */
                'returnsettings',
 
                /**
-                 * @event returnimagedata
                  * Fires when the underlying chart component has exported the chart as an image, the chart passes image data to this event.
-                 * @param {Ext.ux.Chart} this
-                 * @param {object} the underlying chart component DOM reference
-                 * @param {Mixed} The data
+                 * @event returnimagedata
+                 * @param {Ext.ux.Chart} chart this Chart Component
+                 * @param {Element} chartObject the underlying chart component DOM reference
+                 * @param {Mixed} imageData The raw serialized image data.
                  */
                'returnimagedata',
 
                 /**
-                 * @event returnparam
                  * Fires when you request data from a chart by calling the getParam() function.
-                 * @param {Ext.ux.Chart} this
-                 * @param {object} the underlying chart component DOM reference
-                 * @param {Mixed} The param value
+                 * @event returnparam
+                 * @param {Ext.ux.Chart} chart this Chart Component
+                 * @param {Element} chartObject the underlying chart component DOM reference
+                 * @param {Mixed} value The param value
                  */
                'returnparam',
 
                 /**
+                 * Fires when the Flash object reports an Error condition.
                  * @event error
-                 * Fires when the chart reports an error condition.
-                 * @param {Ext.ux.Chart} this
-                 * @param {object} the underlying chart component DOM reference
-                 * @param {Mixed} The Error.
+                 * @param {Ext.ux.Chart} chart this Chart Component
+                 * @param {Element} chartObject the underlying chart component DOM reference
+                 * @param {Mixed} error The Error.
                  */
 
                'error'
             );
 
-            amchartAdapter.superclass.initMedia.call(this);
+            chart.amChart.Adapter.superclass.initMedia.call(this);
 
        },
 
+       /**
+        * Chart configuration options may be overriden by supplying alternate values only as necessary.
+        * <br />See {@link Ext.ux.Media.Flash} for additional config options.
+        * @cfg {Object} chartCfg/fusionCfg Flash configuration options.
+        * @example chartCfg  : {
+              id    : {String}  //id of &lt;object&gt; tag (auto-generated if not specified)
+              name  : {String}  //should match the id value (defaults to the 'id')
+              style : {Object}  //optional DomHelper style object
+              start    : true,
+              controls : true,
+              height  : null,
+              width   : null,
+              autoSize : true,
+              renderOnResize:false,
+              scripting : 'always',
+              cls     :'x-media x-media-swf x-chart-amchart',
+              params: {
+                  flashVars : {
+                      "preloader_color"  : "#999999",
+                       path : 'amChart/amstock/'  //location of fonts. image exports, icons
+                       chart_id          : '@id',
+                      "chart_data"       : (.chartData)
+                      "chart_settings"   : {String} optional, additional inline settings
+                      "data_file"        : (.dataURL)
+                      "settings_file"    : (.settingsURL)
+                      "additional_chart_settings" : {XMLString} appending settings to the ones you loaded from a file or set with the chart_settings (the line above).
+                      "loading_settings" : {String} "Loading settings" text displayed while the settings are loaded
+                      "loading_data" : {String} "Loading data" text displayed while the data is loaded.
+                  }
+              }
+          }
+        */
        chartCfg       : {},
 
        /** @private
@@ -159,17 +193,11 @@
                                             'getSettings', 'rebuild', 'reloadData',
                                             'reloadSettings', 'reloadAll', 'setParam',
                                             'getParam', 'getData', 'exportImage',
-                                            'print', 'printAsBitmap' ],
+                                            'print', 'printAsBitmap' ]
 
-                          params  : {
-                              wmode     :'transparent',
-                              //scale     :'exactfit',
-                              scale       : null,
-                              salign      : null
-                               }
         },
 
-        setDataMethod : 'setData',
+
 
         /** @private called just prior to rendering the media */
         onBeforeMedia: function(){
@@ -191,8 +219,9 @@
              "settings_file"    : this.settingsURL ? encodeURI(this.prepareURL(this.settingsURL)) :null
           }, cCfg.params[this.varsName] );
 
-          amchartAdapter.superclass.onBeforeMedia.call(this);
+          chart.amChart.Adapter.superclass.onBeforeMedia.call(this);
 
+          mc = this.mediaCfg;
           //parse any current additional settings to add redraw and time_stamping
           var re = /(?:<settings([^>]*)?>)((\n|\r|.)*?)(?:<\/settings>)/ig;
           var match = re.exec(mc.params[this.varsName]["additional_chart_settings"]||'');
@@ -213,22 +242,59 @@
 
       },
 
+      /**
+       * Set/update the current chart with a new XML Data series
+       * @param {CSV/XMLString} data The data stream to update with.
+       * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
+       * @default true
+       */
+      setChartData : function(data, immediate){
+           var o;
+           this.chartData = data;
+           if( data && immediate !== false && (o = this.getInterface())){
+
+              if( o.setData !== undefined ){
+                   o.setData(data);
+              }
+           }
+           o = null;
+           return this;
+        },
+
+       /**
+       * Appends data to the current chart with a additional data.
+       * @param {CSV/XMLString} data The data stream to append.
+       * @param {Integer} removeCount Optional number of data points that should be removed from the beginning of dataset.
+       * @default true
+       */
+       appendChartData : function(data, removeCount){
+           var o;
+
+           if( immediate !== false && (o = this.getInterface())){
+
+              if( o.appendData!== undefined ){
+                   o.appendData(data, removeCount|| 0 );
+              }
+           }
+           o = null;
+           return this;
+        },
 
      /**
-      * Set/update the current chart with a new Data series
+      * Set/update the current chart with a new Data series URL
       * @param {String} url The URL of the stream to update with.
-      * @param {Boolean) immediate false to defer rendering the new data until the next chart rendering.
+      * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
       */
-      setDataURL  : function(url,immediate){
+      setChartDataURL  : function(url, immediate){
           var o;
-          var vars = this.mediaCfg.params[this.varsName]||{};
-
           this.dataURL = url;
-          if((o = this.getInterface()) && immediate !== false){
-              o.setParam !== undefined ? o.setParam("data_file", encodeURI(this.prepareURL(url)) ) : this.load(url);
-              o=null;
+          if(url && (o = this.getInterface()) && immediate !== false){
+              o.reloadData(encodeURI(this.prepareURL(url)));
+
           }
+          return this;
        }
+
     });
 
     window.amChartInited =
@@ -259,23 +325,98 @@
 
      });
 
+    /**
+     * @class Ext.ux.Chart.amChart.Component
+     * @extends Ext.ux.Chart.amChart.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Component
+     */
 
-    Ext.ux.Chart.amChart = Ext.extend(Ext.ux.FlashComponent, { ctype : 'Ext.ux.Chart.amChart' });
-    Ext.apply(Ext.ux.Chart.amChart.prototype, amchartAdapter.prototype);
+    Ext.ux.Chart.amChart.Component = Ext.extend(Ext.ux.Media.Flash.Component, {
+        ctype : 'Ext.ux.Chart.amChart.Component' ,
+        mediaClass  : chart.amChart.Adapter
+
+        });
+
+
     Ext.reg('amchart', Ext.ux.Chart.amChart);
+    /**
+     * @class Ext.ux.Chart.amChart.Panel
+     * @extends Ext.ux.Chart.amChart.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Panel
+     */
 
-    Ext.ux.Chart.amChart.Panel = Ext.extend(Ext.ux.FlashPanel, {ctype : 'Ext.ux.Chart.amChart.Panel'});
-    Ext.apply(Ext.ux.Chart.amChart.Panel.prototype, amchartAdapter.prototype);
-    Ext.reg('amchartpanel', Ext.ux.Chart.amChart.Panel);
+    Ext.ux.Chart.amChart.Panel = Ext.extend(Ext.ux.Media.Flash.Panel, {
+        ctype : 'Ext.ux.Chart.amChart.Panel',
+        mediaClass  : chart.amChart.Adapter
+        });
 
-    Ext.ux.Chart.amChart.Window = Ext.extend(Ext.ux.FlashWindow, {ctype : "Ext.ux.Chart.amChart.Window"});
-    Ext.apply(Ext.ux.Chart.amChart.Window.prototype, amchartAdapter.prototype);
-    Ext.reg('amchartwindow', Ext.ux.Chart.amChart.Window);
+    Ext.reg('amchartpanel', chart.amChart.Panel);
 
+    /**
+     * @class Ext.ux.Chart.amChart.Portlet
+     * @extends Ext.ux.Chart.amChart.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
+    Ext.ux.Chart.amChart.Portlet = Ext.extend(Ext.ux.Chart.amChart.Panel, {
+                        anchor      : '100%',
+                        frame       : true,
+                        collapseEl  : 'bwrap',
+                        collapsible : true,
+                        draggable   : true,
+                        cls         : 'x-portlet'
+                    });
+
+    Ext.reg('amchartportlet', Ext.ux.Chart.amChart.Portlet);
+    /**
+     * @class Ext.ux.Chart.amChart.Window
+     * @extends Ext.ux.Chart.amChart.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Window
+     */
+
+    Ext.ux.Chart.amChart.Window = Ext.extend(Ext.ux.Media.Flash.Window, {
+        ctype : "Ext.ux.Chart.amChart.Window",
+        mediaClass  : chart.amChart.Adapter
+
+        });
+
+    Ext.reg('amchartwindow', chart.amChart.Window);
+
+    Ext.namespace("Ext.ux.Chart.amStock");
 
     /*Stock chart class */
+    /**
+     * @class Ext.ux.Chart.amStock.Adapter
+     * @extends Ext.ux.Chart.amChart.Adapter
+     * @version 1.0
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     */
 
-    var amstockAdapter = Ext.extend( amchartAdapter , {
+    Ext.ux.Chart.amStock.Adapter = Ext.extend( Ext.ux.Chart.amChart.Adapter, {
 
        /** @private
         * default mediaCfg(chartCfg) for a Chart object
@@ -299,14 +440,7 @@
                                         'print', 'printAsBitmap', 'setZoom',
                                         'showAll', 'selectDataset', 'compareDataset',
                                         'uncompareDataset', 'uncompareAll'
-                                        ],
-
-                      params  : {
-                          wmode     :'transparent',
-                          scale     :'exactfit',
-                          scale       : null,
-                          salign      : null
-                           }
+                                        ]
           },
 
            /** @private */
@@ -316,80 +450,147 @@
                  this.addEvents(
 
                      /**
-                      * @event rolledover
                       * Fires when indicator position changes.
+                      * @event rolledover
                       * @param {Ext.ux.Chart} this
-                      * @param {object} the underlying chart component DOM reference
-                      * @param {String} The date.
-                      * @param {String} Period.
+                      * @param {object} chartObject the underlying chart component DOM reference
+                      * @param {String} date The date.
+                      * @param {String} period Period.
                       */
 
                      'rolledover',
 
                     /**
-                     * @event clickedon
                      * Fires when when user clicks on plot area.
+                     * @event clickedon
                      * @param {Ext.ux.Chart} this
-                     * @param {object} the underlying chart component DOM reference
-                     * @param {String} The date.
-                     * @param {String} Period.
+                     * @param {object} chartObject the underlying chart component DOM reference
+                     * @param {String} date The date.
+                     * @param {String} period Period.
                      */
                      'clickedon',
 
                      /**
-                       * @event rolledoverevent
                        * Fires when the when user roll-overs some event.
+                       * @event rolledoverevent
                        * @param {Ext.ux.Chart} this
-                       * @param {object} the underlying chart component DOM reference
-                       * @param {String} The date.
-                       * @param {String} Description.
-                       * @param {String} id.
-                       * @param {String} URL.
+                       * @param {object} chartObject the underlying chart component DOM reference
+                       * @param {String} date The date.
+                       * @param {String} description Description.
+                       * @param {String} id id.
+                       * @param {String} url URL.
                        */
                       'rolledoverevent',
 
                       /**
-                       * @event clickedonevent
                        * Fires when when user clicks on some event.
+                       * @event clickedonevent
                        * @param {Ext.ux.Chart} this
-                       * @param {object} the underlying chart component DOM reference
-                       * @param {String} The date.
-                       * @param {String} Description.
-                       * @param {String} id.
-                       * @param {String} URL.
+                       * @param {object} chartObject the underlying chart component DOM reference
+                       * @param {String} date The date.
+                       * @param {String} description Description.
+                       * @param {String} id id.
+                       * @param {String} url URL.
                        */
                        'clickedonevent',
 
 
                       /**
-                       * @event getzoom
                        * Fires when the selected period is changed
+                       * @event getzoom
                        * @param {Ext.ux.Chart} this
-                       * @param {object} the underlying chart component DOM reference
-                       * @param {Mixed} From
-                       * @param {Mixed} To
+                       * @param {Element} chartObject the underlying chart component DOM reference
+                       * @param {Mixed} from From
+                       * @param {Mixed} to To
                        */
 
                      'getzoom'
                   );
 
-                  amstockAdapter.superclass.initMedia.call(this);
+                  chart.amStock.Adapter.superclass.initMedia.call(this);
 
           }
 
     });
 
-    Ext.ux.Chart.amStock = Ext.extend(Ext.ux.FlashComponent, { ctype : 'Ext.ux.Chart.amStock' });
-    Ext.apply(Ext.ux.Chart.amStock.prototype, amstockAdapter.prototype);
-    Ext.reg('amstock', Ext.ux.Chart.amStock);
+    /**
+     * @class Ext.ux.Chart.amStock.Component
+     * @extends Ext.ux.Chart.amStock.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Component
+     */
 
-    Ext.ux.Chart.amStock.Panel = Ext.extend(Ext.ux.FlashPanel, {ctype : 'Ext.ux.Chart.amStock.Panel'});
-    Ext.apply(Ext.ux.Chart.amStock.Panel.prototype, amstockAdapter.prototype);
-    Ext.reg('amstockpanel', Ext.ux.Chart.amStock.Panel);
+    Ext.ux.Chart.amStock.Component = Ext.extend(Ext.ux.Media.Flash.Component, {
+        ctype : 'Ext.ux.Chart.amStock',
+        mediaClass  : chart.amStock.Adapter
+        });
 
-    Ext.ux.Chart.amStock.Window = Ext.extend(Ext.ux.FlashWindow, {ctype : "Ext.ux.Chart.amStock.Window"});
-    Ext.apply(Ext.ux.Chart.amStock.Window.prototype, amstockAdapter.prototype);
-    Ext.reg('amstockwindow', Ext.ux.Chart.amStock.Window);
+    Ext.reg('amstock', chart.amStock.Component);
+
+    /**
+     * @class Ext.ux.Chart.amStock.Panel
+     * @version 2.1
+     * @extends Ext.ux.Chart.amStock.Adapter
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Panel
+     */
+
+    Ext.ux.Chart.amStock.Panel = Ext.extend(Ext.ux.Media.Flash.Panel, {
+        ctype : 'Ext.ux.Chart.amStock.Panel',
+        mediaClass  : chart.amStock.Adapter
+        });
+
+    Ext.reg('amstockpanel', chart.amStock.Panel);
+    /**
+     * @class Ext.ux.Chart.amStock.Portlet
+     * @extends Ext.ux.Chart.amStock.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
+
+
+    Ext.ux.Chart.amStock.Portlet = Ext.extend(Ext.ux.Chart.amStock.Panel, {
+                    anchor      : '100%',
+                    frame       : true,
+                    collapseEl  : 'bwrap',
+                    collapsible : true,
+                    draggable   : true,
+                    cls         : 'x-portlet x-chart-portlet'
+                });
+
+    Ext.reg('amstockportlet', chart.amStock.Portlet);
+
+    /**
+     * @class Ext.ux.Chart.amStock.Window
+     * @extends Ext.ux.Chart.amStock.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Window
+     */
+
+    Ext.ux.Chart.amStock.Window = Ext.extend(Ext.ux.Media.Flash.Window, {
+        ctype : "Ext.ux.Chart.amStock.Window",
+        mediaClass  : chart.amStock.Adapter
+        });
+
+    Ext.reg('amstockwindow', chart.amStock.Window);
 
 
 })();

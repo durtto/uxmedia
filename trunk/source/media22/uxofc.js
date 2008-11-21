@@ -2,8 +2,8 @@
 /**
  * @class Ext.ux.Chart.OFC
  * @version 1.1
- * Author: Doug Hendricks. doug[always-At]theactivegroup.com
- * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ * @author  Doug Hendricks. doug[always-At]theactivegroup.com
+ * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
  */
  /************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -48,18 +48,32 @@
 
         }
 
- This class inherits from (thus requires) the ux.Media(uxmedia.js) and
- ux.Media.Flash (uxflash.js) classes.
+ This class inherits from (thus requires):
+  ux.Media(uxmedia.js) and
+  ux.Media.Flash (uxflash.js),
+  uxchart.js
+
+  files and classes.
 
  */
 
 
 (function(){
-    Ext.namespace("Ext.ux.Chart");
+    Ext.namespace("Ext.ux.Chart.OFC");
 
     var chart = Ext.ux.Chart;
+    /**
+     * @class Ext.ux.Chart.OFC.Adapter
+     * @extends Ext.ux.Chart.FlashAdapter
+     * @version 1.0
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
 
-    var ofcAdapter = Ext.extend( chart.FlashAdapter , {
+    Ext.ux.Chart.OFC.Adapter = Ext.extend( Ext.ux.Chart.FlashAdapter , {
 
        /**
         * @cfg {String|Float} requiredVersion The required Flash version necessary to support the Chart object.
@@ -67,6 +81,50 @@
         */
        requiredVersion : 9,
 
+       /**
+       * Chart configuration options may be overriden by supplying alternate values only as necessary.
+       * <br />See {@link Ext.ux.Media.Flash} for additional config options.
+       * @cfg {Object} chartCfg/fusionCfg Flash configuration options.
+       * @memberof Ext.ux.Chart.OFC.Adapter
+       * @example chartCfg  : {
+             id    : {String}  //id of &lt;object&gt; tag (auto-generated if not specified)
+             name      : '@id', //set automatically
+             style : {Object}  //optional DomHelper style object
+             controls  : true,
+             height    : '@height',
+             width     : '@width',
+             autoSize  : false,
+             renderOnResize:false,  //force re-render when the ux.Chart.Component is resized
+             scripting : 'always',
+             params: {
+               allowscriptaccess : '@scripting',
+               flashVars : {
+                   id          : DOM Id of SWF object (macro '@id')
+                   get-data    : {String} Function name to call to gather initial chart series data (.dataFn)
+                   data-file   : A Url to initially load a chart series (.dataURL)
+               }
+           }
+          }
+        */
+
+       chartCfg  : null,
+
+       /**
+        * @cfg {String} dataFn The named function for the chart object to invoke to retrieve its initial chart series data.
+        * This function must return a compatible JSON string.  If defined this method supercedes the class default data retrieval
+        * autoLoad mechamism.
+        * @optional
+        * @example 'MyApp.getMyChartData'
+        *
+        */
+       dataFn : null,
+
+       /**
+        * @cfg {Mixed} blankChartData The default data value used to render an empty/blank chart.
+        * @default null
+        */
+
+       blankChartData : { "elements": []}, //,"style":{"font-size": "30px;"}}} ,
 
        /** @private */
        mediaCfg        : {url       : null,
@@ -83,14 +141,20 @@
                           cls       :'x-media x-media-swf x-chart-ofc',
                           params    : {
                              allowscriptaccess : '@scripting',
-                             wmode     :'transparent',
-                             scale     :'noscale',
                              flashVars : {
                                  'get-data'  : null,  //function name to call for initial data
                                  'data-file' : null,  //URL for initial data
                                  id: '@id'
                              }
-                            }
+                          },
+
+                          //Auto ExternalInterface Bindings (Flash v8 or higher)
+                          boundExternals : ['post_image',    //from OFC2 beta 2.2 Hyperion?
+                                            'get_img_binary', //new for OFC2 beta 2.2 : returns PNG image as a base64:String
+                                            'get_version',
+                                            'load'
+                                            ]
+
         },
 
         /** @private */
@@ -98,10 +162,10 @@
 
            this.addEvents(
 
-              /**
-              * @event imagesaved
+             /**
               * Fires when the image_saved callback is return by the OFC component
-              * @param {Ext.ux.Chart.OFC} this
+              * @event imagesaved
+              * @param {Ext.ux.Chart.OFC} this Chart Component
               * @param {object} the underlying chart component DOM reference
               */
               'imagesaved'
@@ -111,7 +175,16 @@
            //For compat with previous versions < 2.1
            this.chartCfg || (this.chartCfg = this.ofcCfg);
 
-           ofcAdapter.superclass.initMedia.call(this);
+
+           /*
+            * Custom autoLoad handling for OFC
+            * Must wait for its 'open_flash_chart_data' callBack, indicating its ready
+            * to accept new Data
+            */
+           this._autoLoad = this.dataFn ? null : this.autoLoad;
+           delete this.autoLoad;
+
+           chart.OFC.Adapter.superclass.initMedia.call(this);
 
        },
 
@@ -126,92 +199,223 @@
            cCfg.params[this.varsName] = this.assert( cCfg.params[this.varsName],{});
 
            cCfg.params[this.varsName] = Ext.apply({
-                'data-file' : this.prepareURL(this.dataURL || null),
-                'get-data'  : this.dataFn || null,
+                'data-file' : this.dataURL ? this.prepareURL(this.dataURL || null) : null,
+                'get-data'  : this.dataFn ? String(this.dataFn) : null,
                 allowResize : !!this.resizable
                }, cCfg.params[this.varsName] );
 
-           ofcAdapter.superclass.onBeforeMedia.call(this);
+           chart.OFC.Adapter.superclass.onBeforeMedia.call(this);
 
        },
        /**
+       * @private
        * @cfg {String} setDataMethod The method name to use to set the charts current data series.
        */
        setDataMethod : 'loadData',
 
-       loadData   : function(json){
+
+       /**
+        *
+        * @param {JSONString/Object/Function} data The data (or Function that returns the data) to apply to the chart immediately.
+        * @return {ux.Chart.OFC} this
+        */
+       setChartData: function(data){
            var o, j;
 
-           j = this.assert(json ,null);
+           j = this.assert(data ,null);  //Value/Function assertion
 
-           if(json && (o = this.getInterface()) && o.load != undefined){
+
+           if(j && (o = this.getInterface()) && typeof o.load != 'undefined'){
                   if(this.loadMask && this.autoMask && !this.loadMask.active ){
                        this.loadMask.show();
                   }
 
-                  o.load(typeof j == 'object'? Ext.encode(j) : j);
+                  j = this.chartData = (typeof j == 'object'? Ext.encode(j) : j);
 
-                  //OFC-2 does not notify of render complete
-                  //so we synthesize the event here also.
-                  this.onChartRendered();
-                  return this;
+                  o.load(j);
+                  //OFC2 does not raise the ofc_ready callback for a load method,
+                  //so we will.
+                  this.onChartLoaded();
+
            }
+           return this;
        },
 
+       /**
+       * <strong>Not implemented by OFC2 </strong><p>
+       * Set/update the current chart with a new URL returning a data series.
+       * @param {String} url The URL of the stream to update with.
+       * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
+       * @default true
+       */
+       setChartDataURL  : function(url, immediate){
+         return this;
+        },
 
        /**
-       * When initially rendered, the OFC Flash object MAY invoke the 'window.open_flash_chart_data' method
-       * in an effort to render some chart series of choice.
-       * ux.Chart.OFC proxies this method when called.
-       * Re-define this method of your chart instance to return the desired initial data series.
-       * @return {JSONString} must return a JSON string used to *initially* render the chart.
+       * When initially rendered, the OFC Flash object will invoke the 'window.open_flash_chart_data' method
+       * in an effort to render an initial chart series of choice.
+       * ux.Chart.OFC proxies this method when called.<p>You can use this method in several ways.
+       * <ul><li>If the class {@link #chartData} property contains a value, it is returned.</li><li>Otherwise, autoLoad is initiated if defined.</li>
+       * <li>Or, redefine this method of your chart instance to return the desired initial data series.</li></ul>
+       * @return {JSONString} Return a JSON string used to <b>initially</b> render the chart. <p>If a value is not available, the value of {@link #blankChartData} is returned.
        */
 
        onDataRequest : function() {
 
-           var json;
-           if(json = this.assert(this.chartData ,{}) ){
-               return typeof json == 'object'? Ext.encode(json) : json;
-            }
+           var json = this.assert(this.chartData ,this.assert(this.blankChartData,null) );
+
+           if(!this.chartData && this._autoLoad){
+               this.doAutoLoad();
+               this._autoLoad = null;
+           }
+
+           return json && typeof json == 'object'? Ext.encode(json) : json;
 
         },
+
+      /** @private */
+      doAutoLoad  : function(){
+          this.load (
+           typeof this._autoLoad === 'object' ?
+               this._autoLoad : {url: this._autoLoad});
+
+
+      },
 
       loadMask : false,
 
       /**
-       * Open Flash Chart 2 has an external interface that you can call to make it save an image.
+       * Open Flash Chart 2 has an external interface method that you can call to make it save an image.
        * @param {String} url The URL of the upload PHP script Example: http://example.com/php-ofc-library/ofc_upload_image.php?name=my_chart.jpg
        * @param {Boolean} debug (optional) If debug is true the browser will open a new window showing the results (and any echo/print statements) but, the imagesaved event is NOT raised.
        *  If it is false, no redirect happens and the imagesaved event is raised.
        *  <p>This feature requires a serverside script (included in the OCF2 Chart Distribution: ofc_upload_image.php<p>
-       *  For a Tutorial on this feature, see http://teethgrinder.co.uk/open-flash-chart-2/adv-upload-image.php
+       *  For a Tutorial on this feature, @see http://teethgrinder.co.uk/open-flash-chart-2/adv-upload-image.php
        */
+
+       //OFC2 beta 2 has changed the saveAsImage process, final details are pending, but earlier beta
+       //releases are still supported here (but, likely subject to CHANGE )
       saveAsImage : function(url, debug ){
         var o;
-        if(url && (o = this.getInterface()) && o.save_image != undefined){
+        if(url && (o = this.getInterface()) ){
+            var method = this.chart.post_image || o.post_image;
 
-            o.save_image(url, 'Ext.ux.Chart.OFC.Adapter._saveImageCallback("'+this.id+'")', debug || false);
+            if(method !== undefined){
+               method(url, 'Ext.ux.Chart.OFC.Adapter._saveImageCallback(\''+this.id+'\')', debug || false);
+            }
             return this;
         }
+      },
+
+      /**
+       * Open Flash Chart 2 has an external interface method that you can call to to return a base64 encoded stream of the current chart.
+       * @return {base64:String} The encoded PNG image stream suitable for browsers that support data URLs.
+       */
+      getBinaryImage  : function(){
+         var o;
+        if(o = this.getInterface()){
+
+            if(o.get_img_binary !== undefined){
+               return o.get_img_binary();
+            }
+
+        }
+
+      },
+
+      /**
+       * Returns the release number of the Chart object.
+       * @return {string}
+       */
+      getChartVersion  :  function(){
+          var ns = this[this.externalsNamespace] || this;
+          ns = typeof ns.get_version != 'undefined' ? ns : this.getInterface();
+
+          return (ns && typeof ns.get_version != 'undefined') ? ns.get_version() : '';
+
       }
 
     });
 
 
-    chart.OFC = Ext.extend(Ext.ux.FlashComponent, { ctype : 'Ext.ux.Chart.OFC' });
-    Ext.apply(chart.OFC.prototype, ofcAdapter.prototype);
-    Ext.reg('openchart', chart.OFC);
+    /**
+     * @class Ext.ux.Chart.OFC.Component
+     * @extends Ext.ux.Chart.OFC.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Component
+     */
+    Ext.ux.Chart.OFC.Component = Ext.extend(Ext.ux.Media.Flash.Component, {
+        ctype : 'Ext.ux.Chart.OFC',
+        mediaClass  : chart.OFC.Adapter
+        });
 
-    chart.OFC.Panel = Ext.extend(Ext.ux.FlashPanel, {ctype : 'Ext.ux.Chart.OFC.Panel'});
-    Ext.apply(chart.OFC.Panel.prototype, ofcAdapter.prototype);
-    Ext.reg('openchartpanel', (Ext.ux.OFCPanel = chart.OFC.Panel));
+    Ext.reg('openchart', chart.OFC.Component);
+    /**
+     * @class Ext.ux.Chart.OFC.Panel
+     * @extends Ext.ux.Media.Flash.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Chart.OFC.Adapter
+     */
+    Ext.ux.Chart.OFC.Panel = Ext.extend(Ext.ux.Media.Flash.Panel, {
+        ctype : 'Ext.ux.Chart.OFC.Panel',
+        mediaClass  : chart.OFC.Adapter
+        });
 
-    Ext.ux.OFCWindow = chart.OFC.Window = Ext.extend(Ext.ux.FlashWindow, {ctype : "Ext.ux.OFCWindow"});
-    Ext.apply(chart.OFC.Window.prototype, ofcAdapter.prototype);
-    Ext.reg('openchartwindow', Ext.ux.OFCWindow);
+    Ext.reg('openchartpanel', chart.OFC.Panel);
+    /**
+     * @class Ext.ux.Chart.OFC.Portlet
+     * @extends Ext.ux.Chart.OFC.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
 
-     /* Class Proxy Methods */
-    chart.OFC.Adapter = Ext.apply(ofcAdapter,{
+    Ext.ux.Chart.OFC.Portlet = Ext.extend(Ext.ux.Chart.OFC.Panel, {
+        anchor      : '100%',
+        frame       : true,
+        collapseEl  : 'bwrap',
+        collapsible : true,
+        draggable   : true,
+        cls         : 'x-portlet x-chart-portlet'
+    });
+
+    Ext.reg('openchartportlet', chart.OFC.Portlet);
+
+    /**
+     * @class Ext.ux.Chart.OFC.Window
+     * @extends Ext.ux.Media.Flash.Window
+     * @version 1.0
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Chart.OFC.Adapter
+     */
+
+    Ext.ux.Chart.OFC.Window = Ext.extend(Ext.ux.Media.Flash.Window, {
+        ctype : "Ext.ux.Chart.OFC.Window",
+        mediaClass  : chart.OFC.Adapter
+        });
+
+    Ext.reg('openchartwindow', chart.OFC.Window);
+
+    /* Class Proxy Methods */
+    Ext.apply(chart.OFC.Adapter,{
 
         /** @private  Class method callbacks */
         chartDataRequest : function(DOMId){
@@ -219,7 +423,7 @@
             var c, d = Ext.get(DOMId);
             if(d && (c = d.ownerCt)){
 
-                return c.onDataRequest?c.onDataRequest():'{}';
+                return c.onDataRequest?c.onDataRequest() :c.assert(c.blankChartData,null)
             }
             d= null;
         },
@@ -229,23 +433,24 @@
          * Saved Image Callback handler
          */
         _saveImageCallback : function(ofcComp){
-          var c;
-
-          if(c = Ext.getCmp(ofcComp)){
-             c.fireEvent('imagesaved', c, c.getInterface());
+              var c;
+              if(c = Ext.getCmp(ofcComp)){
+                 //return to Flash asap to expose any callback errors.
+                 c.fireEvent.defer(1,c,['imagesaved', c, c.getInterface()]);
+              }
           }
 
-        }
+        });
 
-    });
+        window.ofc_ready = window.ofc_ready ?
+                window.ofc_ready.createInterceptor(chart.FlashAdapter.chartOnLoad )
+               :chart.FlashAdapter.chartOnLoad;
 
-    window.ofc_ready = window.ofc_ready ?
-            window.ofc_ready.createInterceptor(chart.FlashAdapter.chartOnLoad )
-           :chart.FlashAdapter.chartOnLoad;
-
-    window.open_flash_chart_data = window.open_flash_chart_data ?
-            window.open_flash_chart_data.createInterceptor(chart.OFC.Adapter.chartDataRequest )
+        window.open_flash_chart_data = window.open_flash_chart_data ?
+                window.open_flash_chart_data.createInterceptor(chart.OFC.Adapter.chartDataRequest )
            :chart.OFC.Adapter.chartDataRequest;
+
+
 })();
 
 if (Ext.provide) {
