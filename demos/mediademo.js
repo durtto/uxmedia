@@ -76,32 +76,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
         };
 
 
-//Ext syntax sugar and FB console emulation
-    if(typeof console == 'undefined'){
-        console = {
-        log: Ext.debug?Ext.log:alert,
-        dir: Ext.debug?Ext.dump:alert,
-        info: Ext.debug?Ext.log:alert,
-        warn: Ext.debug?Ext.log:alert
-        };
-      }
-
-    Ext.apply(window,{
-        $ : Ext.get
-       ,$A: Ext.value
-       ,$C : Ext.getCmp
-       ,$D : Ext.getDom
-       ,$$ : Ext.select
-       ,$Q : Ext.query
-       ,$on: Ext.EventManager.on
-       ,$ready : Ext.onReady
-       ,$l : console.log
-       ,$cd: console.dir
-       ,$for : typeof forEach != 'undefined'? forEach : Ext.each
-
-    });
-
-
 //'Plugins unavailable' shortcuts
 var not = {
 
@@ -156,8 +130,8 @@ var sampleNodes = [
             ,handler    : 'winView'
             ,winCfg     : {
                 _cls:'FlashWindow',
-                height:355,
-                width: 425
+                height:365,
+                width: 435
                 ,mediaMask:true
                 ,listeners  : {
                     flashinit : function(panel,player){
@@ -169,13 +143,11 @@ var sampleNodes = [
                  mediaType:'SWF'
                 ,url:'http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1'
                 ,autoSize:true
-                ,height : 355
-                ,width  : 425
+
                 ,id:'youtube'
                 ,controls:true
                 ,start:false
                 ,loop :false
-                ,unsupportedText : not['FLASH']
                 ,params:{
                       wmode:'opaque'
                      ,allowscriptaccess : 'always'
@@ -352,8 +324,8 @@ var sampleNodes = [
                        ,width       :280
                        ,boundExternals : ['open','close','setVolume','load']
                        ,params : {
-                            wmode:'transparent'
-                           ,allowscriptaccess : 'always'
+                           // wmode:'transparent'
+                            allowscriptaccess : 'always'
                            ,flashVars : {
                                scale        :'@scale'
                               ,autostart    : "@start"
@@ -381,6 +353,21 @@ var sampleNodes = [
       ,iconCls:'folder'
       ,expanded:true
       ,children: [
+      {
+         text:'Acrobat(Tab)'
+        ,id:'\/docs\/pdftab'
+        ,leaf:true
+        ,mediaClass :'mediapanel'
+        ,tabTitle   : 'Tabbed PDF'
+
+        ,config:{ mediaType   :'PDF'
+           //See http://partners.adobe.com/public/developer/en/acrobat/PDFOpenParameters.pdf for OpenPDF param options
+                 ,url         :'ex1.pdf#page=2&zoom=50&pagemode=none'
+                 ,id          :'ex1pdf'
+                 ,unsupportedText : not['PDF']
+
+           }
+          },
          {
            text:'Acrobat(Win)'
           ,id:'\/docs\/pdf'
@@ -391,6 +378,7 @@ var sampleNodes = [
               width: 400,
               mediaMask: false,
               autoScroll : false
+
             }
           ,config:{ mediaType   :'PDF'
              //See http://partners.adobe.com/public/developer/en/acrobat/PDFOpenParameters.pdf for OpenPDF param options
@@ -408,14 +396,15 @@ var sampleNodes = [
             ,winCfg     : {
                 height:600,
                 width: 400,
-                //mediaMask: false,
-                autoScroll : false
+                mediaMask: false
+
               }
             ,config:{ mediaType   :'PDFFRAME'
                //See http://partners.adobe.com/public/developer/en/acrobat/PDFOpenParameters.pdf for OpenPDF param options
                      ,url         :'ex1.pdf#page=2&zoom=50&pagemode=none'
                      ,id          :'frameex1pdf'
                      ,unsupportedText : not['PDF']
+                     ,autoSize : true
 
                        }
           }
@@ -435,7 +424,7 @@ var sampleNodes = [
             text:'OWC-Excel(IE)'
            ,id:'\/docs\/excel'
            ,leaf:true
-           ,config:{ mediaType  :'OWC:XLS'
+           ,config:{ mediaType  :'OWCXLS'
                     ,url        :'getData.asp'
                     ,unsupportedText : not['OWC']
                     ,id         :'xlspricing'
@@ -499,13 +488,13 @@ var sampleNodes = [
                 width : 480,
                 constrainHeader : false,
                 constrain : false,
-                autoScroll : true
+                autoScroll : false
 
               }
          ,config:{ mediaType    :'JPEG'
                   ,url          :'how boating accidents happen.jpg'
                   ,id           :'accidents'
-                  ,style        :{position:'relative'}
+                  //,style        :{position:'relative'}
                   ,autoSize  : false
 
                }
@@ -524,15 +513,17 @@ var sampleNodes = [
             ,leaf       :true
             ,mediaClass :'flashpanel'
             ,tabTitle   : 'Flash Detection'
-            ,listeners  : { render : function(panel){
-                             var version = panel.detectVersion();
-                             if(version){
-                                Ext.DomHelper.append(panel.body,
-                                  {tag:'p',html: 'Flash Version ' + version + ' detected.'});
-                             }
-                           }
-                           ,single:true
-                        }
+            ,listeners  : {
+                render : function(panel){
+
+                         var version = panel.detectFlashVersion();
+                         if(version){
+                             panel.setTitle(panel.title +' v'+version);
+
+                         }
+                       }
+                       ,single:true
+                    }
             ,config:{
                  url:'http://www.youtube.com/v/Jr8n0ww3pio&hl=en&fs=1'
                 ,width      :425
@@ -556,7 +547,8 @@ var sampleNodes = [
             ,listeners  : { render : function(panel){
                              var version = panel.detectVersion();
                              if(version){
-                                Ext.DomHelper.append(panel.body,
+                                 panel.setTitle(panel.title  + ', Version: '+ version);
+                                 Ext.DomHelper.append(panel.body,
                                   {tag:'p',html: 'Flash Version ' + version + ' detected, but Version '+(panel.requiredVersion||panel.mediaCfg.requiredVersion)+' is required.'});
                              }
                            }
@@ -626,17 +618,19 @@ var sampleNodes = [
                     _cls:'FlashWindow',
                     height:340,
                     width: 410,
+                    externalsNamespace : 'JWP',
                     autoMask : true,  //set true here because this player provides feedback when ready
                     listeners:{
 
-                        mediaload: function(C, player){
+                        flashinit: function(C, player){
                             //construct a status callback for this instance
                             var cbName = 'recorder_'+player.id;
                             window[cbName] = function(state){this.setTitle(state.newstate);}.createDelegate(C);
                             C.setTitle('JWPlayer 4.1 Reports Ready: '+player.id);
 
-                            //Using Flash ExternalInterface (boundExternals)
-                            with(C){
+                            //Use the externalInterface binding we defined earlier
+                            with(C.JWP){
+
                                addModelListener("STATE",cbName);
                                sendEvent('PLAY','true');
                             }
@@ -652,8 +646,14 @@ var sampleNodes = [
                     ,start      :false
                     ,loop       :false
                     ,scripting  :'always'
+
                     //ExternalInterface bindings
-                    ,boundExternals : ['sendEvent' , 'addModelListener', 'addControllerListener', 'addViewListener', 'getConfig', 'getPlaylist']
+                    ,boundExternals : ['sendEvent' ,
+                                       'addModelListener',
+                                       'addControllerListener',
+                                       'addViewListener',
+                                       'getConfig',
+                                       'getPlaylist']
                     ,params:{
                               wmode    :'opaque'
                              ,allowfullscreen   : true
@@ -694,8 +694,8 @@ var sampleNodes = [
                    ,renderOnResize : true
                    ,unsupportedText : 'JW ImageRotator is not installed/available.'
                    ,params:{
-                        wmode               :'transparent'
-                       ,allowscriptaccess   : 'always'
+                        //wmode               :'opaque'
+                       allowscriptaccess   : 'always'
                        ,allowfullscreen     : true
                        ,quality             : 'high'
                        ,salign              :'tl'
@@ -729,7 +729,7 @@ var sampleNodes = [
 
          ,listeners:{
 
-                 mediarender: function(C, RDC){
+                 mediaload: function(C, RDC){
 
                     if(typeof RDC.dom.AdvancedSettings2 == 'undefined')return;  //may not be installed
 
@@ -812,18 +812,16 @@ var Demo = {
                         tab.refreshMedia();    //force media Refresh
                     } else {
                         tab = this.tabs.add(
-                                 {
+                                 Ext.apply({
                                     xtype   : NA.mediaClass || 'mediapanel'
                                    ,id      : id || (id=Ext.id())
                                    ,hideMode:'nosize'
                                    ,mediaMask : {autoHide:Ext.isIE?false:2000, zIndex:8500} //adjust Z to appear under an Ext.Window
                                    ,mediaCfg: NA.config
                                    ,title   : NA.tabTitle || NA.text || id
-                                   ,listeners: Ext.apply({
-                                       //mediarender:function(p,o){console.log(['mediarender',p,o]);}
-                                     },NA.listeners || false)
-                                   ,items   : NA.items || []
-                                  });
+                                   ,listeners: NA.listeners || false
+                                   ,items   : NA.items || null
+                                  }, NA.panelCfg || {}));
                         this.tabs.doLayout();
 
 
@@ -848,15 +846,19 @@ var Demo = {
                                 ,height     : NA.winCfg.autoHeight? null : 430
                                 ,width      : NA.winCfg.autoWidth? null :430
                                 ,mediaMask  : {autoHide : 2000}  //default 2 second auto-hide mask
+                                ,autoMask   : false
                                 ,minHeight  : (parseInt(mConfig.height,10)||0)+32
                                 ,collapsible: true
-                                ,constrain : true
-                                ,renderTo   : Ext.getBody()
+                               // ,autoScroll : false
+                                ,hideMode   :'nosize'
+                                ,constrain  : true
+                                ,renderTo   : document.body
                                 ,title      : (NA.tabTitle || NA.text || "Who knows?")
                                 ,mediaCfg   : mConfig
                                 ,listeners  : NA.listeners || false
-                                ,tools: [{id:'gear',handler:function(e,t,p){p.renderMedia();},
+                                ,tools: [{id:'refresh',handler:function(e,t,p){p.renderMedia();},
                                         qtip: {text:'Refresh the Media'}}]
+                                ,plugins: !Ext.isIE ? new Ext.ux.plugin.VisibilityMode({mode:'x-hide-nosize',hideMode:'nosize'}) : null
                             }
                             ,NA.winCfg || {})
                             );
@@ -900,8 +902,8 @@ Ext.onReady(function(){
                 layout:'accordion',
 
                 //since this region is collapsible, the plugin is required to prevent child media from reinitializing
-                plugins: !Ext.isIE ? [new Ext.ux.Media.VisibilityFix({mode:'x-hide-nosize',hideMode:'nosize',element:['bwrap']})] : null,
-                hideMode      : !Ext.isIE?'nosize':'display',
+                //plugins: !Ext.isIE ? [new Ext.ux.plugin.VisibilityMode({mode:'x-hide-nosize',hideMode:'nosize',element:['bwrap']})] : null,
+               // hideMode      : !Ext.isIE?'nosize':'display',
                 animCollapse  : Ext.isIE,
                 animFloat     : Ext.isIE,
 

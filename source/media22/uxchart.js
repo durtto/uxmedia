@@ -1,17 +1,29 @@
+/* @copyright 2007-2008, Active Group, Inc. All rights reserved.*/
+ /**
+  * @class Ext.ux.Chart.FlashAdapter
+  * @extends Ext.ux.Media.Flash
+  * @version 2.1
+  * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+  * @author Doug Hendricks,.doug[always-At]theactivegroup.com
+  * @desc
+  * Abstract Chart Class which defines the standard interface for all Flash charts supported by the ChartPack series.
+  */
 
 (function(){
+
     Ext.namespace("Ext.ux.Chart");
-
     var chart = Ext.ux.Chart;
-    var Media = Ext.ux.Media;
+    var flash = Ext.ux.Media.Flash;
 
-    chart.FlashAdapter = Ext.extend( Media.Flash , {
+    Ext.ux.Chart.FlashAdapter = Ext.extend( Ext.ux.Media.Flash, {
 
        /**
         * @cfg {String|Float} requiredVersion The required Flash version necessary to support the Chart object.
-        * @default "8"
+        * @memberof Ext.ux.Chart.FlashAdapter
+        * @default 8
         */
        requiredVersion : 8,
+
 
        /**
         * @cfg {Mixed} unsupportedText Text Markup/DOMHelper config displayed when the Flash Plugin is not available
@@ -24,16 +36,48 @@
        chartURL        : null,
 
        /**
-        * @cfg {Object/JSON string/Function) Chart data series to load when initially rendered. <p> May be an object, JSONString, or Function that returns either.
+        * @cfg {Object/JSONstring/Function} chartData Chart data series to load when initially rendered. <p> May be an object, JSONString, or Function that returns either.
         */
        chartData       : null,
 
        /**
-        * @cfg {String} dataURL Url of the XML Document to load.
+        * @cfg {String} dataURL Url of the chart series to load when initially rendered.
         */
        dataURL         : null,
 
+        /**
+        * @cfg {String/Object} autoLoad Url string or {@link #Ext.ux.Chart.FlashAdapter-load} method config object.
+        */
        autoLoad        : null,
+
+        /**
+         * @cfg {Boolean/Object} loadMask True to mask the Component while the Chart object itself is being
+         * initially loaded.  See {@link Ext.ux.IntelliMask} for configuration options.
+        */
+       loadMask        : null,
+        /**
+         * @cfg {Boolean/Object} mediaMask True to mask the Component while the Chart class loads data to update the
+         * chart during {@link #Ext.ux.Chart.FlashAdapter-load} operations.  See {@link Ext.ux.IntelliMask} for configuration options.
+        */
+       mediaMask       : null,
+
+       autoMask        : null,
+
+       /**
+        * @cfg {Mixed} blankChartData The default data value (or a Function that returns the value) used to render an empty/blank chart.
+        */
+       blankChartData  : '',
+
+
+       /**
+        * @cfg {string} externalsNamespace ExternalInterface commands for all Flash charts will be bound here.<p>This value becomes the secondary interface
+        * for calling object methods defined by the chart object vendor that are not standardized by the ChartPack series.</p>
+        * @default chart
+        * @example
+        * //invoke a chart's Flash ExternalInterface method
+        * Ext.getCmp('salesChart').chart.print();
+        */
+       externalsNamespace  : 'chart',
 
        /**
         * @cfg {Object} chartCfg Flash configuration options.
@@ -52,14 +96,17 @@
             }
         }
         */
-       chartCfg       : {},
-
+       chartCfg       : null,
 
        /**
-        * @cfg {String} autoScroll
-        * @default "false"
-        */
-       autoScroll      : false,
+       * The default Flash Externalinterface object as defined by the {@link #Ext.ux.Chart.FlashAdapter-externalsNamespace} config value.
+       *<p>Use this object to access public methods/properties defined by the Flash Chart implementation.
+       * @property {DOMElement} chart
+       *
+       */
+
+       chart          : null,
+
 
        /** @private
         * default mediaCfg(chartCfg) for a Chart object
@@ -76,11 +123,11 @@
                           cls     :'x-media x-media-swf x-chart',
                           params  : {
                               allowscriptaccess : '@scripting',
-                              wmode     :'transparent',
+                              wmode     :'opaque',
                               scale     :'exactfit',
                               scale       : null,
                               salign      : null
-                               }
+                           }
         },
 
        /** @private */
@@ -89,31 +136,58 @@
            this.addEvents(
 
                /**
+                * Fires after a succesfull {@link #Ext.ux.Chart.FlashAdapter-load} method attempt but before the retrieved data is submitted to the chart.
+                * @event beforeload
+                * @param {Ext.ux.Chart} chart this chart component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                * @param {Object} response The response object from the Ajax request.
+                * @param {Object} options The request options used to perform the Ajax request.
+                * Returning a value of false from this event prevents updating of the chart.
+                */
+
+               'beforeload',
+
+               /**
+                * Fires when the the {@link #Ext.ux.Chart.FlashAdapter-load} method attempt reports an error condition.
+                * @event loadexception
+                * @param {Ext.ux.Chart} chart this chart component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                * @param {Object} response The response object from the Ajax request.
+                * @param {Object} options The request options used to perform the Ajax request.
+                * @param {Error} exception The reported exception.
+                */
+
+               'loadexception',
+
+               /**
+                * If supported by the chart (or can be determined by the chart class),
+                * fires when the underlying chart component reports that it has loaded its chart series data.
                 * @event chartload
-                * Fires when the underlying chart component reports an initialized state
-                * @param {Ext.ux.Chart} this
-                * @param {object} the underlying chart component DOM reference
+                * @param {Ext.ux.Chart} chart this chart component
+                * @param {Element} chartObject the underlying chart component DOM reference
                 */
 
                'chartload',
 
               /**
+               * If supported by the chart or can be determined by the chart class,
+               * fires when the underlying chart component has rendered its chart series data.
                * @event chartrender
-               * Fires when the underlying chart component has rendered its chart series data.
-               * @param {Ext.ux.Chart} this
-               * @param {object} the underlying chart component DOM reference
+               * @param {Ext.ux.Chart} chart This chart component
+               * @param {Element} chartObject The underlying chart component DOM reference
                */
                'chartrender'
             );
 
-           if(this.autoLoad){
-              this.on('chartload', this.doAutoLoad, this, {delay:100});
-           }
 
            this.mediaCfg.renderOnResize =
                 this.mediaCfg.renderOnResize || (this.chartCfg || {}).renderOnResize;
 
            chart.FlashAdapter.superclass.initMedia.call(this);
+
+           if(this.autoLoad){
+                this.on('mediarender', this.doAutoLoad, this, {single:true} );
+           }
        },
 
        /** @private called just prior to rendering the media
@@ -151,111 +225,157 @@
       },
 
      /**
-      * Set/update the current chart with a new XML Data series
-      * @param {String} url The URL of the XML stream to update with.
-      * @param {Boolean) immediate false to defer rendering the new data until the next chart rendering.
+      * Set/update the current chart with a new Data series URL.<p>Override the subclass for a chart-specific implementation.
+      * @param {String} url The URL of the stream to update with.
+      * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
+      * @default true
+      * @return {ux.Chart.Component} this
       */
-     setDataURL  : function(url,immediate){ },
+     setChartDataURL  : function(url, immediate){
+
+           return this;
+
+         },
 
      /**
-      * Loads this Chart immediately with content returned from an XHR call.
-      * @param {Object/String/Function} config A config object containing any of the following options:
-       <pre><code>
-        panel.chartAutoLoad ({
+       * Performs an <b>asynchronous</b> request, updating this chart Element with the response.
+       * If params are specified it uses POST, otherwise it uses GET.<br><br>
+       * <b>Note:</b> Due to the asynchronous nature of remote server requests, the Chart
+       * will not have been fully updated when the function returns. To post-process the returned
+       * data, use the callback option, or an <b><tt>{@link #Ext.ux.Chart.FlashAdapter-beforeload}</tt></b> event handler.
+       * @param {Object} options A config object containing any of the following options:<ul>
+       * <li>url : <b>String/Function</b><p class="sub-desc">The URL to request or a function which
+       * <i>returns</i> the URL </p></li>
+       * <li>method : <b>String</b><p class="sub-desc">The HTTP method to
+       * use. Defaults to POST if the <tt>params</tt> argument is present, otherwise GET.</p></li>
+       * <li>params : <b>String/Object/Function</b><p class="sub-desc">The
+       * parameters to pass to the server (defaults to none). These may be specified as a url-encoded
+       * string, or as an object containing properties which represent parameters,
+       * or as a function, which returns such an object.</p></li>
+       * <li>callback : <b>Function</b><p class="sub-desc">A function to
+       * be called when the response from the server arrives. Returning a false value from the callback prevents loading of the chart data.<p>
+       * The following parameters are passed:<ul>
+       * <li><b>Component</b> : ux.Chart.Component<p class="sub-desc">The Element being updated.</p></li>
+       * <li><b>success</b> : Boolean<p class="sub-desc">True for success, false for failure.</p></li>
+       * <li><b>response</b> : XMLHttpRequest<p class="sub-desc">The XMLHttpRequest which processed the update.</p></li>
+       * <li><b>options</b> : Object<p class="sub-desc">The config object passed to the load call.</p></li></ul>
+       * </p></li>
+       * <li>scope : <b>Object</b><p class="sub-desc">The scope in which
+       * to execute the callback (The callback's <tt>this</tt> reference.) If the
+       * <tt>params</tt> argument is a function, this scope is used for that function also.</p></li>
+       * <li>timeout : <b>Number</b><p class="sub-desc">The number of seconds to wait for a response before
+       * timing out (defaults to 30 seconds).</p></li>
+       * <li>text : <b>String</b><p class="sub-desc">The text to use to override the default loadMask text of the
+       * {@link #Ext.ux.Chart.FlashAdapter-loadMask} div if {@link #Ext.ux.Chart.FlashAdapter-autoMask} is enabled.</p></li>
+       * <li>disableCaching: <b>Boolean</b><p class="sub-desc">Only needed for GET
+       * requests, this option causes an extra, auto-generated parameter to be appended to the request
+       * to defeat caching (defaults to {@link #Ext.ux.Chart.FlashAdapter-disableCaching}).</p></li></ul>
+       * <p>
+      *
+      * @param {Object/String/Function} url A config object containing any of the following options:
+      * @param {Object/Function} params A config object containing parameter definitions or a Function that does, if any.
+      * @param {Function} callback Optional callback Function called upon completion of the request.
+      * @param {Object} scope The scope of the callback Function.
+      * @return {Ext.Data.Connection} The Ext.data.Connection instance used to make the request. (Useful for abort operations)
+      * @example
+        var requestConnection = chartComponent.load({
            url: "your-url.php",
+           method  : "POST",
            params: {param1: "foo", param2: "bar"}, // or a URL encoded string
            callback: yourFunction,
            scope: yourObject, // optional scope for the callback
-           nocache: false,
+           disableCaching : true,
            timeout: 30,
-           connectionClass : null, //optional ConnectionClass (Ext.data.Connection or descendant) to use for the request.
+           text   : 'Loading Sales Data...',  //optional loadMask text override
        });
-       </code></pre>
-        * The only required property is url. The optional property nocache is shorthand for disableCaching
-        *
-        * @return {Ext.ux.Chart} this
         */
 
-       chartAutoLoad  :  function(url, params, callback){
+       load :  function(url, params, callback, scope){
 
-           if(!url){return this;}
+           if(!url){return null;}
+
+           this.connection || (this.connection = new Ext.data.Connection() );
 
            if(this.loadMask && this.autoMask && !this.loadMask.active ){
 
                 this.loadMask.show({
-                     fn : arguments.callee.createDelegate(this,arguments)
-                    ,fnDelay : 50
+                     msg : url.text || null
+                    ,fn : arguments.callee.createDelegate(this,arguments)
+                    ,fnDelay : 100
                  });
-                return this;
+                return this.connection;
            }
 
-           var method , cfg, callerScope,timeout,disableCaching, listeners ;
-
+           var method , dataUrl, cfg, callerScope,timeout,disableCaching ;
 
            if(typeof url === "object"){ // must be config object
-               cfg = url;
-               url = cfg.url;
+               cfg = Ext.apply({},url);
+               dataUrl = cfg.url;
                params = params || cfg.params;
                callback = callback || cfg.callback;
-               callerScope = cfg.scope;
-               method = cfg.method || 'GET';
-               disableCaching = cfg.disableCaching || this.disableCaching;
+               callerScope = scope || cfg.scope;
+               method = cfg.method || params ? 'POST': 'GET';
+               disableCaching = cfg.disableCaching ;
                timeout = cfg.timeout || 30;
-               listeners = cfg.listeners || null;
+           } else {
+               dataUrl  = url;
            }
 
-
-           url = this.assert(url);
-
+           //resolve Function if supplied
+           if(!(dataUrl = this.assert(dataUrl, null)) ){return null;}
 
            method = method || (params ? "POST" : "GET");
            if(method === "GET"){
-               url = this.prepareURL(url, disableCaching );
+               dataUrl= this.prepareURL(dataUrl, disableCaching );
            }
-
-           var o = Ext.apply(cfg ||{}, {
-               url : url,
-               params: (typeof params === "function" && callerScope) ? params.createDelegate(callerScope) : params,
-               success: function(response){
-                        this.setChartData(response.responseText,true);
+           var o;
+           o = Ext.apply(cfg ||{}, {
+               url : dataUrl,
+               params:  params,
+               method: method,
+               success: function(response, options){
+                    o.loadData = this.fireEvent('beforeload', this, this.getInterface(), response, options) !== false;
                },
-               failure: function(response){
-                        console.log('Failure', arguments);
+               failure: function(response, options){
+                    this.fireEvent('loadexception', this, this.getInterface(), response, options, exception);
                    },
                scope: this,
-               callback: callback,
+               //Actual response is managed here
+               callback: function(options, success, response ) {
+                   o.loadData = success;
+                   if(callback){
+                       o.loadData = callback.call(callerScope , this, success, response, options )!== false;
+                   }
+                   if(success && o.loadData){
+                        /* If either the callback or the beforeload event provide a
+                         * options.chartResponse property, use that instead of responseText
+                         */
+                        this.setChartData(options.chartResponse || response.responseText);
+                    }
+                   if(this.autoMask){ this.onChartLoaded(); }
+
+               },
                timeout: (timeout*1000),
                argument: {
                 "options"   : cfg,
-                "url"       : url,
+                "url"       : dataUrl,
                 "form"      : null,
                 "callback"  : callback,
-                "scope"     : callerScope || window,
+                "scope"     : callerScope ,
                 "params"    : params
                }
            });
 
-           new (o.connectionClass || Ext.data.Connection)
-                  ({listeners:listeners}).request(o);
-
-           return this;
-
+           this.connection.request(o);
+           return this.connection;
       },
-
+      /**
+       * Set/update the current chart with a new data series
+       * @param {Mixed} data The chart series data (string, Function, or JSON object depending on the needs of the chart) to update with.
+       */
       setChartData  : function(data){
-          if(this.setDataMethod === 'setChartData'){
-              throw 'Invalid Method Reference for: setChartData';
-          }
-          var iface;
-          var method = this[this.setDataMethod] /* via ExternalInterface or class Method */
-                    || (iface =this.getInterface() ?
-                             iface[this.setDataMethod] /* or SWF direct function call */
-                               :null);
 
-          if (method && typeof method != 'undefined'){
-              method.call(this, this.assert(data,null));
-          }
-
+          return this;
       },
        /** @private */
       setMask  : function(ct) {
@@ -264,18 +384,19 @@
 
           //loadMask reserved for data loading operations only
           //see: @cfg:mediaMask for Chart object masking
-          if(this.loadMask && !this.loadMask.enable){
-              this.loadMask = new Ext.ux.IntelliMask(ct || this[this.mediaEl],
-                   Ext.apply({fixElementForMedia:true, autoHide:4000},this.loadMask));
+          if(this.loadMask && !this.loadMask.disabled){
+              this.loadMask = new Ext.ux.IntelliMask( this[this.mediaEl] || ct, this.loadMask);
           }
 
       },
 
        /** @private */
       doAutoLoad  : function(){
-          this.chartAutoLoad (
+          this.load (
            typeof this.autoLoad === 'object' ?
                this.autoLoad : {url: this.autoLoad});
+
+          this.autoLoad = null;
       },
 
 
@@ -287,7 +408,7 @@
        /** @private */
        onChartLoaded   :  function(){
             this.fireEvent('chartload', this, this.getInterface());
-            if(this.mediaMask && this.autoMask){this.mediaMask.hide();}
+            if(this.loadMask && this.autoMask){this.loadMask.hide();}
        },
 
        /** @private  this function is designed to be used when a chart object notifies the browser
@@ -298,7 +419,14 @@
            this.fireEvent.defer(1,this,['chartload',this, this.getInterface()]);
        },
 
-       loadMask : false
+       loadMask : false,
+
+       /**
+        * @returns {Mixed} Returns the release number of the Chart object.
+        * <p>Note: Override for chart object's specific support for it.
+        */
+
+       getChartVersion :  function(){}
 
     });
 
@@ -308,7 +436,7 @@
 
         var c, d = Ext.get(DOMId);
         if(d && (c = d.ownerCt)){
-            c.onChartLoaded.call( c);
+            c.onChartLoaded.defer(1, c);
             c = d=null;
             return false;
         }
@@ -319,10 +447,43 @@
     chart.FlashAdapter.chartOnRender = function(DOMId){
         var c, d = Ext.get(DOMId);
         if(d && (c = d.ownerCt)){
-            c.onChartRendered.call( c);
+            c.onChartRendered.defer(1, c);
             c = d = null;
             return false;
         }
         d= null;
     };
+
+    Ext.apply(Ext.util.Format , {
+       /**
+         * Convert certain characters (&, <, >, and ') to their HTML character equivalents for literal display in web pages.
+         * @param {String} value The string to encode
+         * @return {String} The encoded text
+         */
+        xmlEncode : function(value){
+            return !value ? value : String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/>/g, "&gt;")
+                .replace(/</g, "&lt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&apos;");
+        },
+
+        /**
+         * Convert certain characters (&, <, >, and ') from their HTML character equivalents.
+         * @param {String} value The string to decode
+         * @return {String} The decoded text
+         */
+        xmlDecode : function(value){
+            return !value ? value : String(value)
+                .replace(/&gt;/g, ">")
+                .replace(/&lt;/g, "<")
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, "&")
+                .replace(/&apos;/g, "'");
+
+        }
+
+    });
+
 })();

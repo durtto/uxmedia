@@ -62,44 +62,88 @@
 
 */
 (function(){
-    Ext.namespace("Ext.ux.Chart");
+    Ext.namespace("Ext.ux.Chart.Fusion");
 
     var chart = Ext.ux.Chart;
 
-    var fusionAdapter = Ext.extend( chart.FlashAdapter, {
-        /**
-        * @cfg {String} chartData  Raw XML to load when the Chart object is rendered.
-        */
-       chartData       : '<chart></chart>',
+    /**
+     * @class Ext.ux.Chart.Fusion.Adapter
+     * @extends Ext.ux.Chart.FlashAdapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
+    Ext.ux.Chart.Fusion.Adapter = Ext.extend( Ext.ux.Chart.FlashAdapter, {
 
        /**
-        * @cfg {String} dataURL Url of the XML Document to load.
+        * @cfg {String|Float} requiredVersion The required Flash version necessary to support the Chart object.
+        * @memberof Ext.ux.Chart.Fusion.Adapter
+        * @default 18
+        */
+       requiredVersion : 8,
+
+        /**
+        * @cfg {Mixed} blankChartData The default data value used to render an empty/blank chart.
+        * @default '<chart></chart>'
+        * @memberof Ext.ux.Chart.Fusion.Adapter
+        */
+
+       blankChartData : '<chart></chart>',
+
+        /**
+        * If specified, this value is loaded by the Fusion chart object itself when rendered.
+        * @cfg {XMLString} chartData  Raw XML to load
+        */
+       chartData       : null,
+
+       /**
+        * @cfg {boolean} disableCaching Disable browser caching of URLs
+        * Fusion already prevents caching internally
+        */
+       disableCaching  : false,
+
+       /**
+        * If specified, the URL is loaded by the Fusion chart object itself when rendered.
+        * @cfg {String} dataURL Url of the XML Document to initially load.
         */
        dataURL         : null,
 
        autoLoad        : null,
 
        /**
+        * Chart configuration options may be overriden by supplying alternate values only as necessary.
+        * <br />See {@link Ext.ux.Media.Flash} for additional config options.
         * @cfg {Object} chartCfg/fusionCfg Flash configuration options.
-        * @example fusionCfg  : {  //optional
-            id    : String   id of <object> tag
-            style : Obj  optional DomHelper style object
+        * @example chartCfg  : {
+            id    : {String}  //id of &lt;object&gt; tag (auto-generated if not specified)
+            name  : {String}  //should match the id value (defaults to the 'id')
+            style : {Object}  //optional DomHelper style object
             params: {
-
-                flashVars : {
-                    chartWidth  : defaults to SWF Object geometry
-                    chartHeight : defaults to SWF Object geometry
+                  start    : true,
+                  controls : true,
+                  height  : null,
+                  width   : null,
+                  autoSize : true,
+                  renderOnResize:true, //Fusion required after reflow
+                  scripting : 'always',
+                  cls     :'x-media x-media-swf x-chart-fusion',
+                  flashVars : {
+                    chartWidth  : defaults to Component size metrics (macro @width)
+                    chartHeight : defaults to Component size metrics (macro @height)
                     debugMode   : Fusion debug mode (0,1)
-                    DOMId       : DOM Id of SWF object (defaults to assigned macro '@id')
-                    registerWithJS: Fusion specific (0,1)
+                    DOMId       : DOM Id of SWF object (macro '@id')
+                    registerWithJS: Fusion specific (0,1) default is 1
                     lang        : default 'EN',
-                    dataXML     : An XML string representing the chart canvas config and data series
-                    dataUrl     : A Url to load an XML resource (dataXML)
+                    dataXML     : An XML string representing the chart canvas config and data series (.chartData)
+                    dataUrl     : A Url to load an XML resource (.dataURL)
                 }
             }
         }
         */
-       chartCfg       : {},
+       chartCfg       : null,
 
 
        /**
@@ -122,7 +166,7 @@
                           scripting : 'always',
                           cls     :'x-media x-media-swf x-chart-fusion',
                           params  : {
-                              wmode     :'transparent',
+                              wmode     :'opaque',
                               scale     :'exactfit',
                               scale       : null,
                               salign      : null
@@ -135,26 +179,23 @@
 
             //Defined in FlashAdaper superclass
            /**
-            * @event chartload
             * Fires when the underlying chart component reports an initialized state
+            * @event chartload
             * @param {Ext.ux.Chart.Fusion} this
             * @param {object} the underlying chart component DOM reference
             */
 
           /**
-           * @event chartrender
            * Fires when the underlying chart component has rendered its chart series data.
+           * @event chartrender
            * @param {Ext.ux.Chart.Fusion} this
            * @param {object} the underlying chart component DOM reference
            */
 
-
-
             //For compat with previous versions < 2.1
-           this.chartCfg || (this.chartCfg = this.fusionCfg);
-           this.chartData = this.dataXML || this.chartData;
+           this.chartCfg || (this.chartCfg = this.fusionCfg || {});
 
-           fusionAdapter.superclass.initMedia.call(this);
+           chart.Fusion.Adapter.superclass.initMedia.call(this);
 
        },
 
@@ -175,31 +216,24 @@
             registerWithJS: 1,
          allowScriptAccess: "@scripting" ,
               lang        : 'EN',
-              dataXML     : this.dataXML || this.chartData || null,
+              dataXML     : this.assert(this.dataXML || this.chartData || this.blankChartData,null),
               dataURL     : this.dataURL ? encodeURI(this.prepareURL(this.dataURL)) : null
           }, cCfg.params[this.varsName]);
 
-          fusionAdapter.superclass.onBeforeMedia.call(this);
+          chart.Fusion.Adapter.superclass.onBeforeMedia.call(this);
 
       },
 
-
-
-       /**
-        * @cfg {String} setDataMethod The method name to use to set the charts current data series.
-        * Indicates to the chartAutoLoad method, what the actual loadData methos is for this class.
-        */
-      setDataMethod : 'loadData',
-
-    /**
-     * Set/update the current chart with a new XML Data series
-     * @param {String} xml The XML stream to update with.
-     * @param {Boolean) immediate false to defer rendering the new data until the next chart rendering.
-     */
-      loadData  : function(xml, immediate){
+      /**
+       * Set/update the current chart with a new XML Data series
+       * @param {XMLString} xml The XML stream to update with.
+       * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
+       * @default true
+       */
+      setChartData : function(xml, immediate){
            var o;
            this.chartData = xml;
-           if( immediate && (o = this.getInterface())){
+           if( immediate !== false && (o = this.getInterface())){
 
               if( o.setDataXML !== undefined ){
 
@@ -212,51 +246,128 @@
                     //Set the actual data
                    this.setVariable("_root.newData",xml);
                    //Go to the required frame
-                   o.TGotoLabel("/", "JavaScriptHandler");
+                   if(o.TGotoLabel !== undefined){
+                       o.TGotoLabel("/", "JavaScriptHandler");
+                   }
 
               }
            }
            o = null;
-        }
+           return this;
+        },
 
 
-
-      /**
-        * Set/update the current chart with a new XML Data series
-        * @param {String} url The URL of the XML stream to update with.
-        * @param {Boolean) immediate false to defer rendering the new data until the next chart rendering.
-        */
-       /*setDataURL  : function(url,immediate){
+       /**
+       * Set/update the current chart with a new XML Data series
+       * @param {String} url The URL of the XML stream to update with.
+       * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
+       * @default true
+       */
+       setChartDataURL  : function(url, immediate){
           var o;
 
-          this.chartData = null;
           this.dataURL = url;
-          if((o = this.getInterface()) && immediate){
-              //FusionCharts Free has no support for dynamic loading of URLs
-              o.setDataURL !== undefined ? o.setDataURL(url) : this.load(url);
+          if((o = this.getInterface()) && immediate !== false){
+
+              o.setDataURL !== undefined ?
+                o.setDataURL(url) :
+                   //FusionCharts Free has no support for dynamic loading of URLs
+                   this.load({url:url,nocache:this.disableCaching} );
               o=null;
           }
-        }*/
+        },
+
+        /**
+        * <b>Not implemented by Fusion Charts</b><p>
+        * Returns the release number of the Chart object.
+        * @return {string}
+        */
+       getChartVersion  :  function(){
+            return '';
+
+       }
 
 
     });
 
-
     window.FC_Rendered = window.FC_Rendered ? window.FC_Rendered.createInterceptor(chart.FlashAdapter.chartOnRender):chart.FlashAdapter.chartOnRender;
     window.FC_Loaded   = window.FC_Loaded   ? window.FC_Loaded.createInterceptor(chart.FlashAdapter.chartOnLoad):chart.FlashAdapter.chartOnLoad;
+  /**
+     * @class Ext.ux.Chart.Fusion.Component
+     * @extends Ext.ux.Chart.Fusion.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Component
+     */
+    Ext.ux.Chart.Fusion.Component = Ext.extend(Ext.ux.Media.Flash.Component, {
+        ctype : 'Ext.ux.Chart.Fusion.Component' ,
+        mediaClass  : Ext.ux.Chart.Fusion.Adapter
+        });
 
-    Ext.ux.Chart.Fusion = Ext.extend(Ext.ux.FlashComponent, { ctype : 'Ext.ux.Chart.Fusion' });
-    Ext.apply(Ext.ux.Chart.Fusion.prototype, fusionAdapter.prototype);
-    Ext.reg('fusion', Ext.ux.Chart.Fusion);
+    Ext.reg('fusion', chart.Fusion.Component);
+    /**
+     * @class Ext.ux.Chart.Fusion.Panel
+     * @extends Ext.ux.Chart.Fusion.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Panel
+     */
+    Ext.ux.Chart.Fusion.Panel = Ext.extend(Ext.ux.Media.Flash.Panel, {
+        ctype : 'Ext.ux.Chart.Fusion.Panel',
+        mediaClass  : Ext.ux.Chart.Fusion.Adapter
+        });
 
-    Ext.ux.Chart.Fusion.Panel = Ext.extend(Ext.ux.FlashPanel, {ctype : 'Ext.ux.Chart.Fusion.Panel'});
-    Ext.apply(Ext.ux.Chart.Fusion.Panel.prototype, fusionAdapter.prototype);
-    Ext.reg('fusionpanel', Ext.ux.Chart.Fusion.Panel);
+    Ext.reg('fusionpanel', chart.Fusion.Panel);
 
-    Ext.ux.Chart.Fusion.Window = Ext.extend(Ext.ux.FlashWindow, {ctype : "Ext.ux.Chart.Fusion.Window"});
-    Ext.apply(Ext.ux.Chart.Fusion.Window.prototype, fusionAdapter.prototype);
+    /**
+     * @class Ext.ux.Chart.Fusion.Portlet
+     * @extends Ext.ux.Chart.Fusion.Panel
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
+    Ext.ux.Chart.Fusion.Portlet = Ext.extend(Ext.ux.Chart.Fusion.Panel, {
+            anchor      : '100%',
+            frame       : true,
+            collapseEl  : 'bwrap',
+            collapsible : true,
+            draggable   : true,
+            cls         : 'x-portlet x-chart-portlet'
+        });
+
+    Ext.reg('fusionportlet', chart.Fusion.Portlet);
+
+    /**
+     * @class Ext.ux.Chart.Fusion.Window
+     * @extends Ext.ux.Chart.Fusion.Adapter
+     * @version 2.1
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Window
+     */
+
+    Ext.ux.Chart.Fusion.Window = Ext.extend(Ext.ux.Media.Flash.Window, {
+        ctype : "Ext.ux.Chart.Fusion.Window",
+        mediaClass  : chart.Fusion.Adapter
+        });
+
     Ext.reg('fusionwindow', Ext.ux.Chart.Fusion.Window);
 })();
+
 if (Ext.provide) {
     Ext.provide('uxfusion');
 }
