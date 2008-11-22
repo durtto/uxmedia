@@ -912,7 +912,9 @@ Ext.removeNode =  Ext.isIE ? function(n){
                  mm.center(this);
              }
              if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
-                 this._mask.setSize(this.dom.clientWidth, this.getHeight());
+                 //this._mask.setSize(this.dom.clientWidth, this.getHeight());
+                 //see: http://www.extjs.com/forum/showthread.php?p=252925#post252925
+                 this._mask.setHeight(this.getHeight());
              }
              return this._mask;
          },
