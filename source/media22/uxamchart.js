@@ -45,7 +45,7 @@
      * @extends Ext.ux.Chart.FlashAdapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @abstract
      */
@@ -330,7 +330,7 @@
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -344,13 +344,13 @@
         });
 
 
-    Ext.reg('amchart', Ext.ux.Chart.amChart);
+    Ext.reg('amchart', Ext.ux.Chart.amChart.Component);
     /**
      * @class Ext.ux.Chart.amChart.Panel
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -366,22 +366,26 @@
 
     /**
      * @class Ext.ux.Chart.amChart.Portlet
-     * @extends Ext.ux.Chart.amChart.Panel
+     * @extends Ext.ux.Chart.amChart.Adapter
+
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Panel
      */
-    Ext.ux.Chart.amChart.Portlet = Ext.extend(Ext.ux.Chart.amChart.Panel, {
-                        anchor      : '100%',
-                        frame       : true,
-                        collapseEl  : 'bwrap',
-                        collapsible : true,
-                        draggable   : true,
-                        cls         : 'x-portlet'
-                    });
+    Ext.ux.Chart.amChart.Portlet = Ext.extend(Ext.ux.Media.Flash.Panel,  {
+        anchor      : '100%',
+        frame       : true,
+        collapseEl  : 'bwrap',
+        collapsible : true,
+        draggable   : true,
+        cls         : 'x-portlet x-chart-portlet',
+        ctype : 'Ext.ux.Chart.amChart.Portlet',
+        mediaClass  : chart.amChart.Adapter
+    });
 
     Ext.reg('amchartportlet', Ext.ux.Chart.amChart.Portlet);
     /**
@@ -389,7 +393,7 @@
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -412,7 +416,7 @@
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 1.0
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      */
 
@@ -518,7 +522,7 @@
      * @extends Ext.ux.Chart.amStock.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -537,7 +541,7 @@
      * @version 2.1
      * @extends Ext.ux.Chart.amStock.Adapter
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -552,24 +556,27 @@
     Ext.reg('amstockpanel', chart.amStock.Panel);
     /**
      * @class Ext.ux.Chart.amStock.Portlet
-     * @extends Ext.ux.Chart.amStock.Panel
+     * @extends Ext.ux.Media.Flash.Panel
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
+     * @base Ext.ux.Chart.amStock.Adapter
      */
 
 
-    Ext.ux.Chart.amStock.Portlet = Ext.extend(Ext.ux.Chart.amStock.Panel, {
-                    anchor      : '100%',
-                    frame       : true,
-                    collapseEl  : 'bwrap',
-                    collapsible : true,
-                    draggable   : true,
-                    cls         : 'x-portlet x-chart-portlet'
-                });
+    Ext.ux.Chart.amStock.Portlet = Ext.extend(Ext.ux.Media.Flash.Panel, {
+        anchor      : '100%',
+        frame       : true,
+        collapseEl  : 'bwrap',
+        collapsible : true,
+        draggable   : true,
+        cls         : 'x-portlet x-chart-portlet',
+        ctype : 'Ext.ux.Chart.amStock.Portlet',
+        mediaClass  : chart.amStock.Adapter
+    });
 
     Ext.reg('amstockportlet', chart.amStock.Portlet);
 
@@ -578,7 +585,7 @@
      * @extends Ext.ux.Chart.amStock.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object

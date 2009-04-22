@@ -3,7 +3,7 @@
  * @class Ext.ux.Chart.Fusion
  * Version:  2.1
  * Author: Doug Hendricks. doug[always-At]theactivegroup.com
- * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ * Copyright 2007-2009, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -71,7 +71,7 @@
      * @extends Ext.ux.Chart.FlashAdapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -222,6 +222,7 @@
 
           chart.Fusion.Adapter.superclass.onBeforeMedia.call(this);
 
+
       },
 
       /**
@@ -297,7 +298,7 @@
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -314,7 +315,7 @@
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -329,22 +330,25 @@
 
     /**
      * @class Ext.ux.Chart.Fusion.Portlet
-     * @extends Ext.ux.Chart.Fusion.Panel
+     * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Panel
      */
-    Ext.ux.Chart.Fusion.Portlet = Ext.extend(Ext.ux.Chart.Fusion.Panel, {
-            anchor      : '100%',
-            frame       : true,
-            collapseEl  : 'bwrap',
-            collapsible : true,
-            draggable   : true,
-            cls         : 'x-portlet x-chart-portlet'
-        });
+    Ext.ux.Chart.Fusion.Portlet = Ext.extend(Ext.ux.Media.Flash.Panel, {
+        anchor      : '100%',
+        frame       : true,
+        collapseEl  : 'bwrap',
+        collapsible : true,
+        draggable   : true,
+        cls         : 'x-portlet x-chart-portlet',
+        ctype       : 'Ext.ux.Chart.Fusion.Portlet',
+        mediaClass  : Ext.ux.Chart.Fusion.Adapter
+    });
 
     Ext.reg('fusionportlet', chart.Fusion.Portlet);
 
@@ -353,7 +357,7 @@
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object

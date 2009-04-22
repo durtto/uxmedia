@@ -31,12 +31,8 @@ Ext.namespace('Ext.ux.plugin');
  });
 */
 
-
-Ext.ux.plugin.VisibilityMode = function(opt) {
-
-    Ext.apply(this, opt||{});
-
-    var CSS = Ext.util.CSS;
+Ext.onReady(function(){
+  var CSS = Ext.util.CSS;
 
     if(!Ext.isIE && this.fixMaximizedWindow !== false){
         //Prevent overflow:hidden (reflow) transitions when an Ext.Window is maximize.
@@ -52,10 +48,18 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
     * container and <object, img, iframe> bleed-thru.
     */
 
-    if(!CSS.getRule('.x-hide-nosize')){
-        CSS.createStyleSheet('.x-hide-nosize,.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;}');
-        CSS.refreshCache();
-    }
+    
+    CSS.createStyleSheet('.x-hide-nosize, .x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;}');
+    CSS.refreshCache();
+    
+});
+
+
+Ext.ux.plugin.VisibilityMode = function(opt) {
+
+    Ext.apply(this, opt||{});
+
+    
 
     //Apply the necessary overrides to Ext.Element once.
     if(!Ext.Element.prototype.setVisible.patched){

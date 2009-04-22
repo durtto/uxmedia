@@ -3,7 +3,7 @@
  * @class Ext.ux.Chart.OFC
  * @version 1.1
  * @author  Doug Hendricks. doug[always-At]theactivegroup.com
- * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
  */
  /************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -30,7 +30,7 @@
    Donations are welcomed: http://donate.theactivegroup.com
    Commercial use is prohibited without a Commercial License. See http://licensing.theactivegroup.com.
 
- Version:  1.1  10/14/2008
+ Version:  1.1  10/14/2009
          Add: saveAsImage method since latest OFC2 beta now supports it.
          Add: imagesaved Event.
          Fixes: Corrected ofcCfg options merge for params and flashVars
@@ -67,7 +67,7 @@
      * @extends Ext.ux.Chart.FlashAdapter
      * @version 1.0
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -124,7 +124,7 @@
         * @default null
         */
 
-       blankChartData : { "elements": []}, //,"style":{"font-size": "30px;"}}} ,
+       blankChartData : { "elements": []},
 
        /** @private */
        mediaCfg        : {url       : null,
@@ -344,7 +344,7 @@
      * @extends Ext.ux.Chart.OFC.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -358,14 +358,14 @@
     Ext.reg('openchart', chart.OFC.Component);
     /**
      * @class Ext.ux.Chart.OFC.Panel
-     * @extends Ext.ux.Media.Flash.Panel
+     * @extends Ext.ux.Chart.OFC.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
-     * @base Ext.ux.Chart.OFC.Adapter
+     * @base Ext.ux.Media.Flash.Panel
      */
     Ext.ux.Chart.OFC.Panel = Ext.extend(Ext.ux.Media.Flash.Panel, {
         ctype : 'Ext.ux.Chart.OFC.Panel',
@@ -375,22 +375,24 @@
     Ext.reg('openchartpanel', chart.OFC.Panel);
     /**
      * @class Ext.ux.Chart.OFC.Portlet
-     * @extends Ext.ux.Chart.OFC.Panel
+     * @extends Ext.ux.Chart.OFC.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
+     * @base Ext.ux.Media.Flash.Panel
      */
 
-    Ext.ux.Chart.OFC.Portlet = Ext.extend(Ext.ux.Chart.OFC.Panel, {
+    Ext.ux.Chart.OFC.Portlet = Ext.extend(Ext.ux.Media.Flash.Panel, {
         anchor      : '100%',
         frame       : true,
         collapseEl  : 'bwrap',
         collapsible : true,
         draggable   : true,
-        cls         : 'x-portlet x-chart-portlet'
+        cls         : 'x-portlet x-chart-portlet',
+        mediaClass  : chart.OFC.Adapter
     });
 
     Ext.reg('openchartportlet', chart.OFC.Portlet);
@@ -400,7 +402,7 @@
      * @extends Ext.ux.Media.Flash.Window
      * @version 1.0
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object

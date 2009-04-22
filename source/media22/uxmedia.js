@@ -17,7 +17,7 @@
 
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
- Version   2.1  11/11/2008
+ Version   2.1  11/11/2009
           Fixes:
             Corrects missing unsupportedText markup rendering.
             Corrects inline markup rendering.
@@ -106,7 +106,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
     * @class Ext.ux.Media
     * @version 2.1
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
-    * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
     * @constructor
     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
     * @desc
@@ -444,7 +444,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
           resizeMedia   : function(comp, w, h){
               var mc = this.mediaCfg;
 
-              if(mc && this.boxReady && mc.renderOnResize && !!w && !!h){
+              if(mc && this.boxReady && mc.renderOnResize && (!!w || !!h)){
                   // Ext.Window.resizer fires this event a second time
                   if(arguments.length > 3 && (!this.mediaObject || mc.renderOnResize )){
                       this.refreshMedia(this[this.mediaEl]);
@@ -631,7 +631,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
      * @extends Ext.BoxComponent
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @base Ext.ux.Media
@@ -681,10 +681,11 @@ Ext.removeNode =  Ext.isIE ? function(n){
          },
 
          /** @private */
-        beforeDestroy   : function(){
+        onDestroy   : function(){
 
-            ux.Component.superclass.beforeDestroy.apply(this,arguments);
             componentAdapter.onDestroy.apply(this,arguments);
+            ux.Component.superclass.onDestroy.apply(this,arguments);
+
          },
 
         doAutoLoad : Ext.emptyFn,
@@ -708,7 +709,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
      * @extends Ext.Panel
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -755,10 +756,11 @@ Ext.removeNode =  Ext.isIE ? function(n){
          },
 
          /** @private */
-        beforeDestroy   : function(){
+        onDestroy   : function(){
 
-            ux.Panel.superclass.beforeDestroy.apply(this,arguments);
             componentAdapter.onDestroy.apply(this,arguments);
+            ux.Panel.superclass.onDestroy.apply(this,arguments);
+
          },
 
         doAutoLoad : Ext.emptyFn
@@ -773,7 +775,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -785,6 +787,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
        collapseEl   : 'bwrap',
        collapsible  : true,
        draggable    : true,
+       autoWidth    : true,
        ctype        : "Ext.ux.Media.Portlet",
        cls          : 'x-portlet x-media-portlet'
 
@@ -797,7 +800,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
      * @extends Ext.Window
      * @version 1.0
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -841,10 +844,10 @@ Ext.removeNode =  Ext.isIE ? function(n){
             componentAdapter.afterRender.apply(this,arguments);
          },
          /** @private */
-        beforeDestroy   : function(){
+        onDestroy   : function(){
 
             componentAdapter.onDestroy.apply(this,arguments);
-            ux.Window.superclass.beforeDestroy.apply(this,arguments);
+            ux.Window.superclass.onDestroy.apply(this,arguments);
 
          },
 
@@ -861,10 +864,13 @@ Ext.removeNode =  Ext.isIE ? function(n){
         var CSS = Ext.util.CSS, rules=[];
 
         CSS.getRule('.x-media', true) || (rules.push('.x-media{width:100%;height:100%;outline:none;overflow:hidden;}'));
-        CSS.getRule('.x-media-mask') || (rules.push('.x-media-mask{width:100%;height:100%;position:relative;zoom:1;}'));
+        CSS.getRule('.x-media-mask') || (rules.push('.x-media-mask{width:100%;height:100%;overflow:hidden;position:relative;zoom:1;}'));
 
         //default Rule for IMG:  h/w: auto;
         CSS.getRule('.x-media-img') || (rules.push('.x-media-img{background-color:transparent;width:auto;height:auto;position:relative;}'));
+
+        // Add the new masking rule if not present.
+        CSS.getRule('.x-masked-relative') || (rules.push('.x-masked-relative{position:relative!important;}'));
 
         if(!!rules.length){
              CSS.createStyleSheet(rules.join(''));
@@ -885,59 +891,62 @@ Ext.removeNode =  Ext.isIE ? function(n){
           */
          mask : function(msg, msgCls){
 
-             if(this._maskMsg){
-                 this._maskMsg.remove();
-             }
-             if(this._mask){
-                 this._mask.remove();
-             }
-
               if(this.getStyle("position") == "static"){
-                  this._preMaskPosition = 'static';
-                  this.setStyle("position", "relative");
+                  this.addClass("x-masked-relative");
               }
 
-             this._mask = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask"}, true);
+             this._mask ||
+                 (this._mask = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask"}, true));
+
 
              if(!this.select('iframe,frame,object,embed').elements.length){
                  this.addClass("x-masked");  //causes element re-init after reflow (overflow:hidden)
              }
-             this._mask.setDisplayed(true);
+
+             //may have been hidden previously (and not removed)
+             this._mask.setDisplayed(true)//.removeClass("x-hide-offsets");
+
              if(typeof msg == 'string'){
-                 this._maskMsg = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask-msg", cn:{tag:'div'}}, true);
-                 var mm = this._maskMsg;
-                 mm.dom.className = msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg";
-                 mm.dom.firstChild.innerHTML = msg;
-                 mm.setDisplayed(true);
-                 mm.center(this);
+                  this._maskMsg || (this._maskMsg = Ext.DomHelper.append(this.dom, {style:"visibility:hidden",cls:"ext-el-mask-msg", cn:{tag:'div'}}, true));
+                  var mm = this._maskMsg;
+                  mm.dom.className = msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg";
+                  mm.dom.firstChild.innerHTML = msg;
+                  mm.center(this).setVisible(true);
              }
+
+             //Adjust Mask Height for IE strict
              if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
-                 //this._mask.setSize(this.dom.clientWidth, this.getHeight());
-                 //see: http://www.extjs.com/forum/showthread.php?p=252925#post252925
-                 this._mask.setHeight(this.getHeight());
+                  //see: http://www.extjs.com/forum/showthread.php?p=252925#post252925
+                  this._mask.setHeight(this.getHeight());
              }
+
              return this._mask;
          },
 
          /**
           * Removes a previously applied mask.
           */
-         unmask : function(){
+         unmask : function(remove){
 
-             if(this._mask){
-                 if(this._preMaskPosition) {
-                     this.setStyle("position", this._preMaskPosition);
+            if(this._maskMsg ){
+
+                this._maskMsg.setVisible(false);
+                if(remove){
+                    this._maskMsg.remove(true);
+                    delete this._maskMsg;
                  }
+            }
 
-                 if(this._maskMsg){
-                     this._maskMsg.remove();
-                     delete this._maskMsg;
+            if(this._mask ) {
+
+                 this._mask.setDisplayed(false)//.addClass("x-hide-offsets");
+                 if(remove){
+                     this._mask.remove(true);
+                     delete this._mask;
                  }
-
-                 this._mask.remove();
-                 delete this._mask;
              }
-             this.removeClass("x-masked");
+
+             this.removeClass(["x-masked", "x-masked-relative"]);
 
          },
 
@@ -954,7 +963,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
                 Ext.removeNode(this.dom);
                 this.maskEl = null;
                 this.dom = null;  //clear ANY DOM references
-                delete this.dom;
 
               }
          },
@@ -991,7 +999,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
      * @extends Ext.Element
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -1041,10 +1049,10 @@ Ext.removeNode =  Ext.isIE ? function(n){
             return this.maskEl.mask.apply(this.maskEl, arguments);
 
         },
-        unmask : function(){
+        unmask : function(remove){
 
             if(this.maskEl){
-                this.maskEl.unmask();
+                this.maskEl.unmask(remove);
                 this.maskEl = null;
             }
         }
@@ -1058,7 +1066,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
      * @class Ext.ux.IntelliMask
      * @version 1.0.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @constructor
      * Create a new LoadMask
@@ -1068,7 +1076,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
         Ext.apply(this, config);
         this.el = Ext.get(el);
-        this.removeMask = Ext.value(config.removeMask, true);
 
     };
 
@@ -1077,10 +1084,11 @@ Ext.removeNode =  Ext.isIE ? function(n){
         /**
          * @cfg {Boolean} removeMask
          * True to create a single-use mask that is automatically destroyed after loading (useful for page loads),
-         * False to persist the mask element reference for multiple uses (e.g., for paged data widgets).  Defaults to false.
+         * False to persist the mask element reference for multiple uses (e.g., for paged/frequently masked widgets).
+         * @default false.
          */
 
-         removeMask  : true,
+         removeMask  : false,
 
         /**
          * @cfg {String} msg The default text to display in a centered loading message box
@@ -1186,7 +1194,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
             } else { fnDelay = 0; }
 
             if(autoHide && (autoHide = parseInt(autoHide , 10)||2000)){
-                this.hide.defer(autoHide+(fnDelay ||0),this);
+                this.hide.defer(autoHide+(fnDelay ||0),this );
             }
 
             return this.active? {mask: this.el._mask , maskMsg: this.el._maskMsg} : null;
@@ -1248,10 +1256,11 @@ Ext.ux.Media.mediaTypes =
        /**
          * @namespace Ext.ux.Media.mediaTypes.WMV
          * @desc <pre><code>WMV Interface Notes
-           On IE only, to retrieve the object interface (for controlling player via JS)
+           On the original player (pre XP) IE only, to retrieve the object interface (for controlling player via JS)
             use mediaComp.getInterface().object.controls
 
-           For all other browsers use: mediaComp.getInterface().controls
+           Other browsers do NOT support a Javascript interface
+
            Related DOM attributes for WMV:
                  DataFormatAs :
                  Name :
@@ -1287,7 +1296,7 @@ Ext.ux.Media.mediaTypes =
               ,cls      : 'x-media x-media-wmv'
               ,type     : 'application/x-mplayer2'
               ,data     : "@url"
-              ,autoSize : false
+              ,autoSize : true
               ,params  : {
 
                   filename     : "@url"
@@ -1510,6 +1519,18 @@ Ext.ux.Media.mediaTypes =
                  ,cls      : 'x-media x-media-img x-media-gif'
                  ,src     : "@url"
         },
+
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.TIFF
+         * @desc
+         */
+
+        TIFF : {
+                  tag      : 'object'
+                 ,type     : "image/tiff"
+                 ,cls      : 'x-media x-media-img x-media-tiff'
+                 ,data     : "@url"
+        },
         /**
          * @namespace Ext.ux.Media.mediaTypes.JPEG
          */
@@ -1527,7 +1548,7 @@ Ext.ux.Media.mediaTypes =
         JP2 :{
                   tag      : 'object'
                  ,cls      : 'x-media x-media-img x-media-jp2'
-                 ,type     : "image/jpeg2000-image"
+                 ,type     : Ext.isIE ? "image/jpeg2000-image" : "image/jp2"
                  ,data     : "@url"
                 },
         /**
