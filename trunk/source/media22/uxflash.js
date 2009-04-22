@@ -2,7 +2,7 @@
 /*
  * version  2.1
  * author Doug Hendricks. doug[always-At]theactivegroup.com
- * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ * Copyright 2007-2009, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -659,7 +659,7 @@
       * @base Ext.ux.Media.Flash
       * @version  2.1
       * @author Doug Hendricks. doug[always-At]theactivegroup.com
-      * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
       * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
       * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
       * @constructor
@@ -684,7 +684,7 @@
          /**
          * @private
          */
-         autoEl  : {tag:'div',style : { overflow: 'auto', display:'block'}},
+         autoEl  : {tag:'div',style : { overflow: 'hidden', display:'block'}},
 
         /**
          * @private
@@ -715,7 +715,7 @@
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-     * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @constructor
      * @base Ext.ux.Media.Flash
      * @param {Object} config The config object
@@ -730,7 +730,7 @@
 
         mediaClass    : Ext.ux.Media.Flash,
 
-        autoScroll    : true,
+        autoScroll    : false,
 
         /**
          * @cfg {Boolean} shadow Set to false to prevent DOM reflow when shadow is hidden/shown
@@ -754,24 +754,33 @@
    /**
     *
     * @class Ext.ux.Media.Flash.Portlet
-    * @extends Ext.ux.Media.Flash.Panel
+    * @extends Ext.ux.Media.Portlet
     * @version  2.1
     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
-    * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
     * @desc
     * Base Media Class for Flash objects
     * Used primarily for rendering Flash Objects for use with inline markup.
     */
 
-   Ext.ux.Media.Flash.Portlet = Ext.extend(Ext.ux.Media.Flash.Panel,{
+   Ext.ux.Media.Flash.Portlet = Ext.extend(Ext.ux.Media.Portlet,{
        ctype         : "Ext.ux.Media.Flash.Portlet",
        anchor       : '100%',
        frame        : true,
        collapseEl   : 'bwrap',
        collapsible  : true,
        draggable    : true,
-       cls          : 'x-portlet x-flash-portlet'
+       autoScroll    : false,
+       autoWidth    : true,
+       cls          : 'x-portlet x-flash-portlet',
+       mediaClass    : Ext.ux.Media.Flash,
+       /** @private */
+       initComponent   : function(){
+           componentAdapter.init.apply(this,arguments);
+           Ext.ux.Media.Flash.Panel.superclass.initComponent.apply(this,arguments);
+
+       }
 
    });
 
@@ -785,7 +794,7 @@
     * @version  2.1
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-    * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
     * @constructor
     * @base Ext.ux.Media.Flash
     * @param {Object} config The config object
@@ -799,7 +808,7 @@
         ctype         : "Ext.ux.Media.Flash.Window",
         mediaClass    : Ext.ux.Media.Flash,
 
-        autoScroll    : true,
+        autoScroll    : false,
 
         /**
          * @cfg {Boolean} shadow Set to false to prevent DOM reflow when shadow is hidden/shown
@@ -826,7 +835,7 @@
     * @version  2.1
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-    * @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
     * @desc
     * Base Media Class for Flash objects
     * Used primarily for rendering Flash Objects for use with inline markup.

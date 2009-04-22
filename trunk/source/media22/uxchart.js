@@ -337,7 +337,7 @@
                     o.loadData = this.fireEvent('beforeload', this, this.getInterface(), response, options) !== false;
                },
                failure: function(response, options){
-                    this.fireEvent('loadexception', this, this.getInterface(), response, options, exception);
+                    this.fireEvent('loadexception', this, this.getInterface(), response, options);
                    },
                scope: this,
                //Actual response is managed here
