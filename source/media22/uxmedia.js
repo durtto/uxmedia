@@ -101,6 +101,18 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
 (function(){
 
+    //remove null and undefined members from an object
+    var compactObj =  function(obj){
+            var out = {};
+            for (var member in obj){
+               (obj[member] === null || obj[member] === undefined) || (out[member] = obj[member]);
+            }
+            return out;
+
+        };
+
+
+
    /**
     *
     * @class Ext.ux.Media
@@ -239,23 +251,22 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
              if( m.mediaType){
 
-                 var value,p, El = Ext.Element;
+                 var value,p, El = Ext.Element.prototype;
 
                  var media = Ext.apply({}, this.getMediaType(this.assert(m.mediaType,false)) || false );
 
-                 var params = Ext.apply(media.params||{},m.params || {});
+                 var params = compactObj(Ext.apply(media.params||{},m.params || {}));
 
                  for(var key in params){
 
                     if(params.hasOwnProperty(key)){
                       m.children || (m.children = []);
                       p = this.assert(params[key],null);
-                      if(p !== null){
-                         m.children.push({tag:'param'
-                                         ,name:key
-                                         ,value: typeof p === 'object'?Ext.urlEncode(p):encodeURI(p)
-                                         });
-                      }
+                      m.children.push({tag:'param'
+                         ,name:key
+                         ,value: typeof p === 'object'?Ext.urlEncode(compactObj(p)):encodeURI(p)
+                         });
+
                     }
                  }
                  delete   media.params;
@@ -281,12 +292,12 @@ Ext.removeNode =  Ext.isIE ? function(n){
                  if(m.height || m.autoSize)
                  {
                     Ext.apply(m.style, {
-                      height:El.addUnits( m.autoSize ? '100%' : m.height ,El.prototype.defaultUnit)});
+                      height:El.addUnits( m.autoSize ? '100%' : m.height ,El.defaultUnit)});
                  }
                  if(m.width || m.autoSize)
                  {
                     Ext.apply(m.style, {
-                      width :El.addUnits( m.autoSize ? '100%' : m.width ,El.prototype.defaultUnit)});
+                      width :El.addUnits( m.autoSize ? '100%' : m.width ,El.defaultUnit)});
                  }
 
                  m.id   = this.assertId(m.id);
