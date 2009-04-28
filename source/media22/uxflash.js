@@ -470,7 +470,7 @@
             var c = [
                     '<invoke name="'+method+'" returntype="javascript">',
                     '<arguments>',
-                    (Array.prototype.slice.call(arguments,1)).map(this._toXML).join(''),
+                    (Array.prototype.slice.call(arguments,1)).map(this._toXML, this).join(''),
                     '</arguments>',
                     '</invoke>'].join('');
 
