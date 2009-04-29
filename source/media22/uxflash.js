@@ -433,8 +433,9 @@
         /** Helper method used to bind Flash ExternalInterface methods to a property on the ux.Flash Component level.<p>
          * Note: ExternalInterface bindings are maintained on the{@link #Ext.ux.Media.Flash-externalsNamespace} property, not the DOM Element itself.
          * <p>This prevent potential corruption during Flash refreshes which may occur during DOM reflow or when the Flash object is not visible.
-         * @param {String|Array} methods A single method name or Array of method names to bind.
-         * @example flashObj.bindExternals(['Play', 'Stop', 'Rewind']);
+         * @param {String|Array} methods A single method name or Array of method names to bind.  Methods can be simple strings or objects of the form:<p>
+         * {name:'methodName', returnType:'javascript'}.  Methods defined as strings default to a 'javascript' returnType.
+         * @example flashObj.bindExternals(['Play', 'Stop', 'Rewind', {name: 'GetPlayList', returnType : 'xml'} ]);
          * flashMediaObj.Play();
          */
         bindExternals : function(methods){
@@ -450,9 +451,13 @@
                      : this );
 
             Ext.each(methods,function(method){
+
+               var m = method.name || method;
+               var returnType = method.returnType || 'javascript';
+
                 //Do not overwrite existing function with the same name.
-               nameSpace[method] || (nameSpace[method] = function(){
-                      return this.invoke.apply(this,[method].concat(Array.prototype.slice.call(arguments,0)));
+               nameSpace[m] || (nameSpace[m] = function(){
+                      return this.invoke.apply(this,[m, returnType].concat(Array.prototype.slice.call(arguments,0)));
                }.createDelegate(this));
 
             },this);
@@ -464,18 +469,22 @@
          * @return {Mixed} Result (if provided) or, 'undefined' if the method
          * is not defined by the External Interface
          */
-        invoke   : function(method /* , optional arguments, .... */ ){
+        invoke   : function(method , returnType /* , optional arguments, .... */ ){
 
             var obj,r;
-            var c = [
-                    '<invoke name="'+method+'" returntype="javascript">',
+
+            if(method && (obj = this.getInterface()) && typeof obj.CallFunction !== 'undefined' ){
+                var c = [
+                    String.format('<invoke name="{0}" returntype="{1}">',method, returnType),
                     '<arguments>',
-                    (Array.prototype.slice.call(arguments,1)).map(this._toXML, this).join(''),
+                    (Array.prototype.slice.call(arguments,2)).map(this._toXML, this).join(''),
                     '</arguments>',
                     '</invoke>'].join('');
 
-            if(method && (obj = this.getInterface()) && typeof obj.CallFunction !== 'undefined' ){
-                r=Ext.decode(obj.CallFunction(c));
+                r = obj.CallFunction(c);
+
+                typeof r === 'string' && returnType ==='javascript' && (r= Ext.decode(r));
+
             }
             return r;
 
