@@ -293,13 +293,13 @@ Ext.removeNode =  Ext.isIE ? function(n){
                  {
                     Ext.apply(m.style, {
                         //Ext 2 & 3 compatibility -- Use the defaultUnit from the Component's el for default
-                      height:(El.addUnits||Ext.Element.addUnits).call(this.mediaEl, m.autoSize ? '100%' : m.height ,El.defaultUnit||'px')});
+                      height:(Ext.Element.addUnits || El.addUnits).call(this.mediaEl, m.autoSize ? '100%' : m.height ,El.defaultUnit||'px')});
                  }
                  if(m.width || m.autoSize)
                  {
                     Ext.apply(m.style, {
                         //Ext 2 & 3 compatibility -- Use the defaultUnit from the Component's el for default
-                      width :(El.addUnits||Ext.Element.addUnits).call(this.mediaEl, m.autoSize ? '100%' : m.width ,El.defaultUnit||'px')});
+                      width :(Ext.Element.addUnits || El.addUnits).call(this.mediaEl, m.autoSize ? '100%' : m.width ,El.defaultUnit||'px')});
                  }
 
                  m.id   = this.assertId(m.id);
