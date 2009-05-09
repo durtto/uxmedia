@@ -1,13 +1,16 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Open Flash Charts-2 with ux.MediaFlash 2.1</title>
+<title>Open Flash Charts-2 with uxChartPack 2.1</title>
 <link rel="stylesheet" type="text/css" href="../../resources/css/ext-all.css" />
 
     <script type="text/javascript" src="../../adapter/ext/ext-base.js"></script>
-    <script type="text/javascript" src="../../ext-all.js"></script>
-    <script type="text/javascript" src="uxmedia.js"></script>
-    <script type="text/javascript" src="uxflash.js"></script>
+    <script type="text/javascript" src="../../ext-all-debug.js"></script>
+    <script type="text/javascript" src="../debug.js"></script>
+    <script type="text/javascript" src="../media2/uxvismode.js"></script>
+    <script type="text/javascript" src="../media2/uxmedia.js"></script>
+    <script type="text/javascript" src="../media2/uxflash.js"></script>
+    <script type="text/javascript" src="uxchart.js"></script>
     <script type="text/javascript" src="uxofc.js"></script>
 
 
@@ -16,35 +19,12 @@
 
 <script type="text/javascript">
 
-    //Ext syntax sugar and FB console emulation
-    if(typeof console == 'undefined'){
-        console = {
-        log: Ext.debug?Ext.log:alert,
-        dir: Ext.debug?Ext.dump:alert
-        };
-      }
-
-    Ext.apply(window,{
-        $ : Ext.get
-       ,$A: Ext.value
-       ,$C : Ext.getCmp
-       ,$D : Ext.getDom
-       ,$$ : Ext.select
-       ,$Q : Ext.query
-       ,$on: Ext.EventManager.on
-       ,$ready : Ext.onReady
-       ,$l : console.log
-       ,$cd: console.dir
-       ,$for : typeof forEach != 'undefined'? forEach : Ext.each
-
-    });
-
 
     Ext.lib.Ajax.forceActiveX = true;
     Ext.BLANK_IMAGE_URL = '../../resources/images/default/s.gif';
 
-
-    Ext.onReady(function(){
+  var view;
+  Ext.onReady(function(){
 
      Ext.QuickTips.init();
      Ext.QuickTips.getQuickTip().interceptTitles = true;
@@ -52,34 +32,43 @@
      Ext.QuickTips.enable();
 
 
-  var getTools = function(){
-   return [
+    var getTools = function(){
+       return [
            //chart reload support
            {id:'refresh',
             handler:function(e,t,p){
-                p.chartData? p.loadData(): p.refreshMedia();
+                p.chartData? p.setChartData(p.chartData): p.refreshMedia();
               },
              qtip: {text:'Refresh the Chart'}  },
 
             //save as image support
             {id:'save',
              handler:function(e,t,p){
-                p.saveAsImage('ofc_upload_image.php?name=chart.jpg' );
+                p.saveAsImage('ofc_upload_image.php?name=chart.png' );
               },
-            qtip: {text:'Save Chart as Image'}
-           }
+            qtip: {title:'Save Chart as Image',text:'This example requires a PHP-Server, and depending on your OFC <b>beta</b> release, may not work at all!'}
+           } /*,
+
+           {id:'save',
+                handler:function(e,t,p){
+
+                   if(Ext.isIE){
+                       //Ext.Msg.show({title:'Sorry', msg: 'IE Does not Support Data URLs', buttons:Ext.Msg.OK});
+                       //return false;
+                   }
+                   p.viewImage( "data:image/png;base64," + p.getBinaryImage() , 'PNG Data Url');
+                   console.log(p.getBinaryImage());
+                 },
+               qtip: {title:'Retrieve PNG Image',text:'This example display a base64 encode string of a PNG image of the current chart.'}
+           }*/
         ];
    };
 
-  var chartEvents = {
-           //mousemove:function(){console.log(['mousemove',arguments])}
-          };
 
-    var saved_image_url = 'tmp-upload-images/chart.jpg';
+    var saved_image_url = 'tmp-upload-images/chart.png';
 
-    var data = { "title":{ "text":"Many data lines", "style":"{font-size: 30px;}" }, "elements":[ { "type": "line", "colour": "#9933CC", "text": "Page views", "width": 2, "font-size": 10, "dot-size": 6, "values" : [15,18,19,14,17,18,15,18,17] }, { "type": "line_dot", "colour": "#CC3399", "width": 2, "text": "Downloads", "font-size": 10, "dot-size": 5, "values" : [10,12,14,9,12,13,10,13,12] }, { "type": "line_hollow", "colour": "#80a033", "width": 8, "text": "Bounces", "font-size": 10, "dot-size": 8, "values" : [5,7,9,7,4,6,1,2,5] } ], "y_axis":{ "max": 20 }, "x_axis":{ "steps": 2, "labels": ["January","February","March","April","May","June","July","August","September"] } };
 
-    view = new Ext.ux.OFCWindow({
+    view = new Ext.ux.Chart.OFC.Window({
            x : 100,
            y : 100,
             height   : 300,
@@ -88,76 +77,94 @@
             collapsible : true,
             tools       : getTools(),
 
-            ofcCfg   :
+            chartCfg   :
                { id       : 'chart2',
                  autoSize : true,
+                 renderOnResize : false,
+                 disableCaching  : true
 
-                 /** this is not required, but included here so that saved images
-                 *   reflect the current Window size
-                 */
-                 renderOnResize : true,
-
-                 listeners: chartEvents
 
                }
-            ,mediaMask : {msg:'Loading Chart Object'}
-            ,loadMask  : {msg:'Gathering Chart Data'}
-            ,autoMask  : true
-            ,listeners :{
-                chartload: function(comp, obj){
-                    //console.log('SWFReady');
-                },
+                //,mediaMask : {msg:'Loading OpenChart Object'}
+                ,loadMask  : {msg:'Gathering Chart Data'}
+                ,autoMask  : true
+                ,listeners :{
 
-                // Notification that the image save to server is complete
-                imagesaved : function(comp, SWF){
-                    this.previews || (this.previews = new Array() );
-                    var prev;
+                    chartload: function(chart, obj){
+                        //console.info('chartLoaded');
+                        var ver = chart.getChartVersion();
+                        chart.setTitle(chart.title.split(":")[0] + (': v' + (ver || 2)) );
+
+                    },
+
+                    // Notification that the image save to server is complete
+                    imagesaved : function(comp, SWF){
+                        this.viewImage( this.prepareURL(saved_image_url,true) , saved_image_url);
+
+                    },
+
+                    destroy : function(){  //close any linked image previews
+                      Ext.destroy.apply(Ext, this.previews || [] );
+                    }
+
+
+                }
+                ,id         :'demoOFC'
+                ,chartURL   : 'OFC/open-flash-chart.swf'
+
+                /* Chart data loading options */
+
+                //,chartData  : data  //initial load - pre-defined JSON series
+
+                //,dataURL  : 'data-files/OFC/data-3.txt'  // SWF-Managed remote request in JSON format
+                ,dataFn     : 'view.getMyData'         // named function returning initial JSON string
+               //,autoLoad   :{ url:'data-files/OFC/data-3.txt',nocache : true }  // let Ext.ux.Chart.OFC autoLoad do the same.
+                //,autoLoad   : 'data-files/OFC/area-point-objects.txt'
+
+                ,getMyData     : function(){
+                    return Ext.encode(
+                        { "title":{ "text":"Many data lines", "style":"{font-size: 30px;}" }, "elements":[ { "type": "line", "colour": "#9933CC", "text": "Page views", "width": 2, "font-size": 10, "dot-size": 6, "values" : [15,18,19,14,17,18,15,18,17] }, { "type": "line_dot", "colour": "#CC3399", "width": 2, "text": "Downloads", "font-size": 10, "dot-size": 5, "values" : [10,12,14,9,12,13,10,13,12] }, { "type": "line_hollow", "colour": "#80a033", "width": 8, "text": "Bounces", "font-size": 10, "dot-size": 8, "values" : [5,7,9,7,4,6,1,2,5] } ], "y_axis":{ "max": 20 }, "x_axis":{ "steps": 2, "labels": ["January","February","March","April","May","June","July","August","September"] } }
+                    );
+                }
+                ,previews  :  new Array()
+
+                ,viewImage  : function( url, title ){
+
                     //publish image to a new Window
-                    this.previews.push(
 
-                      prev = new Ext.Window({
-                         title: 'Saved Image: '+saved_image_url,
+                    var prev =  new Ext.Window({
+                         title: 'Saved Image: '+title,
                          autoHeight : true,
-                         autoWidth : !Ext.isIE,   //IE Hates autoWidth
-                         width  : this.getSize().width,  //for IE
+                         autoWidth : !Ext.isIE,
+
+                         //for IE, set width same as chart window
+                         width  : Ext.isIE ? this.getSize(true).width : 'auto' ,
                          constrain : true,
                          bodyCfg : {tag:'img',
                                  cls:'x-window-body',
-                                 src: saved_image_url+'?_cb='+new Date().getTime(),
+                                 src: url,
                                  style:{width: 'auto', height: 'auto'}
                               }
-                         })
-                     );
-                     prev.show( view.getEl().child('.x-tool-save') );
-                },
 
-                destroy : function(){
-                  Ext.destroy.apply(Ext, this.previews || [] );
+                        });
+                     this.previews.push(prev);
+                     prev.show(this.getEl().child('.x-tool-save'));
+
                 }
 
-            }
-            ,id         :'demoOFC'
-            ,chartURL   : 'open-flash-chart.swf'
 
-            /* Chart data loading options */
-
-            ,chartData  : data  //initial load - pre-defined JSON series
-
-            //,dataURL  : 'data-files/data-3.txt'  // SWF-Managed remote request in JSON format
-            //,dataFn     : 'view.onDataRequest'   // named function returning initial JSON string
-            //,autoLoad   :'data-files/data-3.txt' // let Ext.ux.Chart.OFC autoLoad do the same.
-
-  });
+        });
 
   view.show();
 
   Ext.EventManager.on(window,   "beforeunload",  function(){
+
        Ext.destroy( view, Ext.QuickTips.getQuickTip() );
        } ,window ,{single:true});
 
 });
 </script>
-<style type="text/css"> .x-window-header{position:relative;} </style>
+<!--- style type="text/css"> .x-window-header{position:relative;} </style -->
 </head>
 <body>
 <div id="about">

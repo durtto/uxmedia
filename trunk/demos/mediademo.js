@@ -57,7 +57,7 @@ Ext.override( Ext.Element , {
 });
 
 Ext.removeNode =  Ext.isIE ? function(n){
-            var d = document.createElement('div'); //the original closure held a reference till reload as well.
+
             if(n && n.tagName != 'BODY'){
                     var d = document.createElement('div');
                     d.appendChild(n);
@@ -220,6 +220,22 @@ var sampleNodes = [
             ,leaf:true
             ,handler    : 'winView'
             ,winCfg     : {_cls:'MediaWindow',height:300, width: 250, mediaMask:{msg:'Loading Movie...',autoHide:3000}}
+            ,listeners  : {
+                 beforedestroy : function(win){
+
+                     /*
+                       Firefox will require the latest WMPplayer plugin to support Javascript interaction:
+                        http://port25.technet.com/videos/downloads/wmpfirefoxplugin.exe
+
+                     */
+                     var player = this.getInterface();
+                     if(player){
+
+                        (player.controls || player).stop();
+                    }
+                   }
+
+              }
             ,config:{
                  mediaType  :'WMV'
                 ,url        :'http://www.sarahsnotecards.com/catalunyalive/fishstore.wmv'
@@ -230,7 +246,7 @@ var sampleNodes = [
                 ,start      :true
                 ,status     :true
                 ,params: {
-                    stretchToFit : true
+                    stretchToFit : Ext.isIE
 
                   }
                 }
@@ -319,7 +335,7 @@ var sampleNodes = [
                        ,controls    : 'yes'
                        ,loop        : 'no'
                        ,volume     : 20
-
+                       ,type     : 'application/x-ms-wmp' //v11 Player
                        ,height      :44
                        ,width       :280
                        ,boundExternals : ['open','close','setVolume','load']
@@ -628,7 +644,7 @@ var sampleNodes = [
                             window[cbName] = function(state){this.setTitle(state.newstate);}.createDelegate(C);
                             C.setTitle('JWPlayer 4.1 Reports Ready: '+player.id);
 
-                            //Use the externalInterface binding we defined earlier
+                            //Use the externalsNamespace.externalInterface binding we defined earlier
                             with(C.JWP){
 
                                addModelListener("STATE",cbName);
@@ -649,7 +665,7 @@ var sampleNodes = [
 
                     //ExternalInterface bindings
                     ,boundExternals : ['sendEvent' ,
-                                       'addModelListener',
+                                       {name:'addModelListener',returnType:'xml'},
                                        'addControllerListener',
                                        'addViewListener',
                                        'getConfig',

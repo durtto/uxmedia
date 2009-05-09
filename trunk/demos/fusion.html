@@ -2,14 +2,17 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<title>ux.Fusion Charts with ux.MediaFlash 2.0</title>
+<title>ux.Fusion Charts with uxChartPack 2.1</title>
 <link rel="stylesheet" type="text/css" href="../../resources/css/ext-all.css" />
 
 
     <script type="text/javascript" src="../../adapter/ext/ext-base.js"></script>
     <script type="text/javascript" src="../../ext-all.js"></script>
-    <script type="text/javascript" src="uxmedia.js"></script>
-    <script type="text/javascript" src="uxflash.js"></script>
+    <script type="text/javascript" src="../debug.js"></script>
+    <script type="text/javascript" src="../media2/uxvismode.js"></script>
+    <script type="text/javascript" src="../media2/uxmedia.js"></script>
+    <script type="text/javascript" src="../media2/uxflash.js"></script>
+    <script type="text/javascript" src="uxchart.js"></script>
     <script type="text/javascript" src="uxfusion.js"></script>
 
 
@@ -17,30 +20,57 @@
     <link rel="stylesheet" type="text/css" href="../shared/examples.css" />
 
 <script type="text/javascript">
-if(typeof console == 'undefined'){
-    console = {
-    log: Ext.debug?Ext.log:alert,
-    dir: Ext.debug?Ext.dump:alert
-    };
-  }
 
-Ext.apply(window,{
-    $ : Ext.get
-   ,$A: Ext.value
-   ,$C : Ext.getCmp
-   ,$D : Ext.getDom
-   ,$$ : Ext.select
-   ,$Q : Ext.query
-   ,$on: Ext.EventManager.on
-   ,$ready : Ext.onReady
-   ,$l : console.log
-   ,$cd: console.dir
-   ,$for : typeof forEach != 'undefined'? forEach : Ext.each
+//Highly recommended for use with complex/Flash Ext.Components
+
+
+Ext.override( Ext.Element , {
+
+     findParent : function(simpleSelector, maxDepth, returnEl){
+            var p = this.dom, b = document.body, depth = 0, dq = Ext.DomQuery, stopEl;
+            maxDepth = maxDepth || 50;
+            if(typeof maxDepth != "number"){
+                stopEl = Ext.getDom(maxDepth);
+                maxDepth = 10;
+            }
+            try {
+                while(p && p.nodeType == 1 && depth < maxDepth && p != b && p != stopEl){
+                    if(dq.is(p, simpleSelector)){
+                        return returnEl ? Ext.get(p) : p;
+                    }
+                    depth++;
+                    p = p.parentNode;
+                }
+            } catch(e) {};
+            return null;
+        }
+
 
 });
 
+Ext.removeNode =  Ext.isIE ? function(n){
+            var d = document.createElement('div'); //the original closure held a reference till reload as well.
+            if(n && n.tagName != 'BODY'){
+                    var d = document.createElement('div');
+                    d.appendChild(n);
+                    //d.innerHTML = '';  //either works equally well
+                    d.removeChild(n);
+                    delete Ext.Element.cache[n.id];  //clear out any Ext reference from the Elcache
+                    d = null;  //just dump the scratch DIV reference here.
+            }
+
+        } :
+        function(n){
+            if(n && n.parentNode && n.tagName != 'BODY'){
+                n.parentNode.removeChild(n);
+                delete Ext.Element.cache[n.id];
+            }
+};
+
+
 Ext.lib.Ajax.forceActiveX = true;
 Ext.BLANK_IMAGE_URL = '../../resources/images/default/s.gif';
+
 
 Ext.onReady(function(){
 
@@ -51,77 +81,84 @@ Ext.onReady(function(){
 
   var getTools = function(){
       return [{id:'refresh', handler:function(e,t,p){ p.refreshMedia();},qtip: {text:'Refresh the Chart'}  },
-             {id:'print', handler:function(e,t,p){ p.print();},qtip: {text:'Print the Chart'}  }
+             {id:'print', handler:function(e,t,p){ p.chart.print();},qtip: {text:'Print the Chart'}  },
+             //save as image support
+             {id:'save', handler:function(e,t,p){ p.chart.saveAsImage(); },
+                  qtip: {title:'Save Chart as Image',text:'This example requires a PHP-Server.'}
+             }
         ];
     };
 
-  var chartEvents = {
-           //'mousemove':function(){console.log(['mousemove',arguments])}
-          };
 
-  view = new Ext.ux.FusionWindow({
+  view = new Ext.ux.Chart.Fusion.Window({
 
-            height      : 600,
+            height      : 500,
             width       : 350,
             x           : 570,
-            title       : 'ux.FusionWindow:',
+            id         :'winFusion',
+            title       : 'ux.Fusion.Window:',
             collapsible : true,
             maximizable : true,
+            autoScroll : false,
+
             tools       : getTools(),
             constrainHeader : true,
-            fusionCfg   :{ id   : 'chart2'
-                          ,listeners: chartEvents
-                          ,params:{
-                              wmode:'opaque'
-                          }
-                         }
+
+            chartCfg   :{ id   : 'chart2' }
             ,mediaMask : {msg:'Loading Chart Object'}
             ,loadMask  : {msg:'Gathering Chart Data'}
             ,autoMask  : true
             ,listeners :{
-                       show  : function(p){
-                           if(p.floating)p.setPosition(p.x||10,p.y||10);
-                           }
-                      ,chartload : function(p,obj){
-                          p.setTitle(p.title.split(":")[0]+': Loaded.');
+                       chartload : function(win,obj){
+
+                          win.setTitle(win.title.split(":")[0]+': Data Loaded.');
                           }
-                      ,chartrender : function(p,obj){
-                          p.setTitle(p.title.split(":")[0]+': Rendered.');
+                      ,chartrender : function(win,obj){
+
+                          win.setTitle(win.title.split(":")[0]+': Rendered.');
                           }
+
             }
-            ,id         :'demoFusion'
-            ,chartURL   : 'Column3D.swf'
-            , dataURL  :'Column3D.xml' //let the chartObj load it
-            //,autoLoad   :'Column3D.xml'  //let Ext autoLoad do the same.
+
+            ,chartURL   : 'Fusion/Column3D.swf'
+            , dataURL  :'data-files/Fusion/column3D.xml' //let the chartObj load it
+            /* ,autoLoad   :{    //let Ext autoLoad do the same.
+                url:'data-files/Fusion/Column3D.xml',
+                disableCaching : false ,
+                callback : function(comp, success, response, options){
+                    console.info(arguments);
+
+                }
+            }*/
+
   });
 
-  panel = new Ext.ux.FusionPanel({
-       title       : 'ux.FusionPanel:',
+   panel  = new Ext.ux.Chart.Fusion.Panel({
+       title       : 'ux.Fusion.Panel:',
        collapsible : true,
+       id       : 'panelFusion',
        renderTo    : Ext.getBody(),
        floating:false,
-       fusionCfg   :{ id   : 'chart1'
-                     ,listeners: chartEvents  //DOM listeners for the chart Object itself
+       chartCfg   :{ id   : 'chart1'
+
                      ,params : {
                         flashVars: {
                            debugMode : 0
                            }
                       }
                   },
-       autoScroll : true,
-       id       : 'chartpanel',
-       chartURL : 'Pie3D.swf',
-       dataURL  : 'Column3D.xml',
+
+
+       chartURL : 'Fusion/Pie3D.swf',
+       dataURL  : 'data-files/Fusion/Column3D.xml',
        mediaMask  : {msg:'Loading Chart Object'},
        autoMask  : true,
        width     : 500,
        height    : 400,
        listeners :{
-           show  : function(p){
-               if(p.floating)p.setPosition(p.x||10,p.y||10);
-               }
-           ,chartload : function(p,obj){
-               p.setTitle(p.title.split(":")[0]+': Loaded.');
+
+           chartload : function(p,obj){
+               p.setTitle(p.title.split(":")[0]+': Data Loaded.');
                }
            ,chartrender : function(p,obj){
                p.setTitle(p.title.split(":")[0]+': Rendered.');
@@ -130,15 +167,22 @@ Ext.onReady(function(){
        tools     : getTools()
 
   });
+  panel.show();
 
 
   view.show();
-  panel.show();
 
-  Ext.EventManager.on(window,   "beforeunload",  function(){
+
+  /* Warning -- Fusion somehow raises window beforeunload (all browsers)
+    when it completes an image upload.
+    Thus, cleanup is disabled for this demonstration
+    */
+
+   /* Ext.EventManager.on(window,   "beforeunload",  function(){
+
        Ext.destroy( view, panel, Ext.QuickTips.getQuickTip());
        } ,window ,{single:true});
-
+    */
 });
 </script>
 </head>
