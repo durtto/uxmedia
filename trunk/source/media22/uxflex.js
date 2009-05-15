@@ -92,7 +92,8 @@
              return mt;
         },
 
-        /*
+        /**
+         * Returns a reference to the FABridge implementation
          * @return {Object} Flex Root
          */
         getBridge : function(){
@@ -162,6 +163,17 @@
            
 	    },
         
+        userTypes : {},
+  
+		addToUserTypes : function(){
+          for (var i = 0; i < arguments.length; i++){
+              ux.Flex.userTypes[arguments[i]] = {
+                      'typeName': arguments[i],
+                      'enriched': false
+              };
+          }
+		},
+        
         extractBridgeFromID : function(id) {
             return ux.Flex.idMap[(id >> 16)];
 		},
@@ -201,7 +213,11 @@
 		    get: true,
 		    set: true,
 		    call: true
-		}
+		},
+        
+        refCount : 0,  //recursive call counter
+        
+        RECURSION_ERROR: "You are trying to call recursively into the Flash Player which is not allowed. In most cases the JavaScript setTimeout function, can be used as a workaround."
     });
     
     window.FABridge__bridgeInitialized = Ext.type(window.FABridge__bridgeInitialized) == 'function' ? 
@@ -341,68 +357,160 @@
         remoteInstanceCache : {},
         remoteFunctionCache : {},
         localFunctionCache : {},
-        nextLocalFuncID : 0,    
+        nextLocalFuncID : 0,   
+        
+        /**
+         * accessor for retrieving a proxy to the root object
+         */
         getRoot : function(){
             return this.dom.getRoot ? this.deserialize(this.dom.getRoot()): undefined;
         },
+        /**
+         * release all AS Objects from the local cache maps
+         */
         releaseASObjects: function(){
 	        return this.dom.releaseASObjects ? this.dom.releaseASObjects() : null;  
 	    },
+
+        /**
+         * release a specific object, identified by its ID
+         */
+        releaseNamedASObject: function(object){
+            return this.dom.releaseNamedASObject && object && object.id
+              ? this.dom.releaseNamedASObject(object.id) : false;  
+        },
+        
+        /**
+         * create a new AS class instance.
+         */
 	    createObject: function(className){
 	        return this.dom.create ? this.deserialize(this.dom.create(className)): null;
 	    },
+        
+        /**
+         * Increment the reference count of the AS Object.
+         */
+        addRef: function(objRef){
+            return this.dom.incRef ? this.dom.incRef(objRef.id): null;
+        },
+        
+        /**
+         * Decrement the reference count of the AS Object.
+         */
+        release: function(objRef){
+            return this.dom.releaseRef ? this.dom.releaseRef(objRef.id): null;
+        },
         /*------------------------------------------------------------------------------------
 		// low level access to the flash object
 		/*----------------------------------------------------------------------------------*/
 	
+        /**
+         * fetch a named property off the instanced associated with objRef
+         */
 	    getPropertyFromAS: function(objRef,propName) 
 	    {
-	        return this.dom.getPropFromAS(objRef,propName);
+            if(!!ux.Flex.refCount){
+                throw new Error(ux.Flex.RECURSION_ERROR);
+            }
+            ux.Flex.refCount++;
+            var result = this.handleError(this.dom.getPropFromAS(objRef,propName));
+            ux.Flex.refCount--;
+            return result;
 	    },  
 	
+        /**
+         * set a named property on the instance associated with objRef
+         */
 	    setPropertyInAS: function(objRef,propName,value){
-	        return this.dom.setPropInAS(objRef,propName,this.serialize(value));
+            if(!!ux.Flex.refCount){
+                throw new Error(ux.Flex.RECURSION_ERROR);
+            }
+            ux.Flex.refCount++;
+            var result = this.handleError(this.dom.setPropInAS(objRef,propName,this.serialize(value)));
+            ux.Flex.refCount--;
+            return result;
 	    },
 	        
 	    callASFunction: function(funcID, args){
-	        return this.dom.invokeASFunction(funcID,this.serialize(args));   
+            if(!!ux.Flex.refCount){
+                throw new Error(ux.Flex.RECURSION_ERROR);
+            }
+            ux.Flex.refCount++;
+            var result = this.handleError(this.dom.invokeASFunction(funcID,this.serialize(args)));
+            ux.Flex.refCount--;
+            return result;
 	    },
 	
 	    callASMethod: function(objID, funcName, args){
-	        return this.dom.invokeASMethod(objID,funcName, this.serialize(args));    
+            
+	        if(!!ux.Flex.refCount){
+                throw new Error(ux.Flex.RECURSION_ERROR);
+            }
+            ux.Flex.refCount++;
+            var result = this.handleError(this.dom.invokeASMethod(objID,funcName, this.serialize(args)));
+            ux.Flex.refCount--;
+            return result;
 	    },
+        
         makeID: function(token){
             return (this.bridgeID << 16) + token;
         },
+        
+        // check the given value for the components of the hard-coded error code : __FLASHERROR
+        // used to marshall NPE's into flash
+        
+        handleError: function(value){
+             if (typeof(value)=="string" && value.indexOf("__FLASHERROR")==0){
+                 var errorMessage = value.split("||");
+                 !!ux.Flex.refCount && ux.Flex.refCount--;
+                 throw new Error(errorMessage[1]||'FlashError');
+             }
+             return value;
+       },
 	
 	/*------------------------------------------------------------------------------------
 	// responders to remote calls from flash
 	/*----------------------------------------------------------------------------------*/
 	
 	    invokeLocalFunction: function(funcID,args){
-	        var result;
-	        var func = this.localFunctionCache[funcID];
-	        if(func != undefined) {
-	            result = this.serialize(func.apply(null,this.deserialize(args)));
-	        }
-	        return result;
+	        var func;
+	        return (func = this.localFunctionCache[funcID])? 
+	            this.serialize(func.apply(null,this.deserialize(args))) : undefined;
+	        
 	    },
 	
 		/*------------------------------------------------------------------------------------
 		// Object Types and Proxies
 		/*----------------------------------------------------------------------------------*/
 		
+        getUserTypeDescriptor: function(objTypeName){
+	         var simpleType = objTypeName.replace(/^([^:]*)\:\:([^:]*)$/, "$2");
+	         var isUserProto = ((typeof window[simpleType] == "function") && (typeof ux.Flex.userTypes[simpleType] != "undefined"));
+	 
+	         var protoEnriched = false;
+	        
+	         if (isUserProto) {
+	              protoEnriched = ux.Flex.userTypes[simpleType].enriched;
+	         }
+	         var toret = {
+	                 'simpleType': simpleType,
+	                 'isUserProto': isUserProto,
+	                 'protoEnriched': protoEnriched
+	         };
+	         return toret;
+         }, 
+        
 		// accepts an object reference, returns a type object matching the obj reference.
-	    getTypeFromName: function(objTypeName){
-	        return this.remoteTypeCache[objTypeName];
-	    },
-	
-	    createProxy: function(objID,typeName){
-	        var objType = this.getTypeFromName(typeName);
+        getTypeFromName: function(objTypeName){
+            return this.remoteTypeCache[objTypeName];
+        },
+	    
+        createProxy: function(objID,typeName){
+            var objType = this.getTypeFromName(typeName);
             instanceFactory.prototype = objType;
             return this.remoteInstanceCache[objID] = new instanceFactory(objID);
 
-	    },
+        },
 	
 	    getProxy: function(objID) {
 	        return this.remoteInstanceCache[objID];
@@ -424,33 +532,29 @@
 	            ux.Flex.blockedMethods[methods[i]] || 
 	                this.addMethodToType(newType,methods[i]);
 	        }
-	        this.remoteTypeCache[newType.typeName] = newType;
-	        return newType;
+	        return this.remoteTypeCache[newType.typeName] = newType;
 	    },
-	
-	    addPropertyToType: function(ty,propName) 
-	    {
-	        ty[propName] = function() {
-	            return this.bridge.deserialize(this.bridge.getPropertyFromAS(this.id,propName));
-	        }
+        
+	    /**
+         * //add a property to a typename; used to define the properties that can be called on an AS proxied object
+	     */
+	    addPropertyToType: function(ty,propName){
+	        
 	        var c = propName.charAt(0);
-	        var setterName;
-	        if(c >= "a" && c <= "z")
-	        {
-	            setterName = "set" + c.toUpperCase() + propName.substr(1);
-	        }
-	        else
-	        {
-	            setterName = "set" + propName;
-	        }
+	        var setterName = "set" + (c >= "a" && c <= "z" ? c.toUpperCase() + propName.substr(1): propName);
 	        ty[setterName] = function(val) {
 	            this.bridge.setPropertyInAS(this.id,propName,val);
 	        }
+            ty[propName] = function() {
+                return this.bridge.deserialize(this.bridge.getPropertyFromAS(this.id,propName));
+            }
 	    },
 	
 	    addMethodToType: function(ty,methodName){
 	        ty[methodName] = function() { 
-	            return this.bridge.deserialize(this.bridge.callASMethod(this.id,methodName,ux.Flex.argsToArray(arguments)));
+	            return this.bridge.deserialize(
+                    this.bridge.callASMethod(this.id,methodName,ux.Flex.argsToArray(arguments))
+                    );
 	        }
 	    },
 	
@@ -499,7 +603,7 @@
 	        else if(t == "function") 
 	        {
 	            result.type = ux.Flex.TYPE_JSFUNCTION;
-	            result.value = this.getFunctionID(value,true);              
+	            result.value = this.getFunctionID(value);              
 	        }
 	        else if (value instanceof ASProxy)
 	        {
@@ -518,12 +622,10 @@
 	    deserialize: function(packedValue) 
 	    {
 	    
-	        var result, L;
-	    
-	        var t = typeof(packedValue);
+	        var result, L, t = typeof(packedValue);
 	        if(t == "number" || t == "string" || t == "boolean" || packedValue == null || packedValue == undefined) 
 	        {
-	            result = packedValue;
+	            result = this.handleError(packedValue);
 	        }
 	        else if (Ext.isArray(packedValue)){
 	            result = [];
@@ -596,7 +698,13 @@
 	    },
         call: function(funcName,args){
 	        this.bridge.callASMethod(this.id,funcName,args);
-	    }
+	    },
+        addRef: function() {
+             this.bridge.addRef(this);
+         },
+        release: function() {
+             this.bridge.release(this);
+         }
 	});
    
      ux.Flex.prototype.elementClass  =  Ext.ux.Media.Flex.Element;
