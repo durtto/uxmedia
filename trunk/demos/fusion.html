@@ -23,31 +23,6 @@
 
 //Highly recommended for use with complex/Flash Ext.Components
 
-
-Ext.override( Ext.Element , {
-
-     findParent : function(simpleSelector, maxDepth, returnEl){
-            var p = this.dom, b = document.body, depth = 0, dq = Ext.DomQuery, stopEl;
-            maxDepth = maxDepth || 50;
-            if(typeof maxDepth != "number"){
-                stopEl = Ext.getDom(maxDepth);
-                maxDepth = 10;
-            }
-            try {
-                while(p && p.nodeType == 1 && depth < maxDepth && p != b && p != stopEl){
-                    if(dq.is(p, simpleSelector)){
-                        return returnEl ? Ext.get(p) : p;
-                    }
-                    depth++;
-                    p = p.parentNode;
-                }
-            } catch(e) {};
-            return null;
-        }
-
-
-});
-
 Ext.removeNode =  Ext.isIE ? function(n){
             var d = document.createElement('div'); //the original closure held a reference till reload as well.
             if(n && n.tagName != 'BODY'){
@@ -95,7 +70,7 @@ Ext.onReady(function(){
             height      : 500,
             width       : 350,
             x           : 570,
-            id         :'winFusion',
+            id          :'winFusion',
             title       : 'ux.Fusion.Window:',
             collapsible : true,
             maximizable : true,
@@ -104,19 +79,29 @@ Ext.onReady(function(){
             tools       : getTools(),
             constrainHeader : true,
 
-            chartCfg   :{ id   : 'chart2' }
+            chartCfg   :{
+                id   : 'chart2',
+                renderOnResize : false,   //Fusion 3.1 supports 100% width/height resizing, so disable,
+                width : '100%',
+                height : '100%'
+            }
             ,mediaMask : {msg:'Loading Chart Object'}
             ,loadMask  : {msg:'Gathering Chart Data'}
             ,autoMask  : true
             ,listeners :{
                        chartload : function(win,obj){
 
-                          win.setTitle(win.title.split(":")[0]+': Data Loaded.');
+                          win.setTitle(win.title.split(":")[0]+': Chart Object Loaded.');
                           }
                       ,chartrender : function(win,obj){
 
                           win.setTitle(win.title.split(":")[0]+': Rendered.');
-                          }
+                          },
+
+                       dataloaded : function(win, obj){
+
+                           win.setTitle(win.title.split(":")[0]+': Data Loaded.');
+                       }
 
             }
 
@@ -158,7 +143,7 @@ Ext.onReady(function(){
        listeners :{
 
            chartload : function(p,obj){
-               p.setTitle(p.title.split(":")[0]+': Data Loaded.');
+               p.setTitle(p.title.split(":")[0]+': Chart Object Loaded.');
                }
            ,chartrender : function(p,obj){
                p.setTitle(p.title.split(":")[0]+': Rendered.');

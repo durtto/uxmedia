@@ -53,6 +53,7 @@
                     debugMode   : Fusion debug mode (0,1)
                     DOMId       : DOM Id of SWF object (defaults to assigned macro '@id')
                     registerWithJS: Fusion specific (0,1)
+                    scaleMode   : 'noScale',
                     lang        : default 'EN',
                     dataXML     : An XML string representing the chart canvas config and data series
                     dataUrl     : A Url to load an XML resource (dataXML)
@@ -146,6 +147,7 @@
                     chartHeight : defaults to Component size metrics (macro @height)
                     debugMode   : Fusion debug mode (0,1)
                     DOMId       : DOM Id of SWF object (macro '@id')
+                    scaleMode   : 'noScale',
                     registerWithJS: Fusion specific (0,1) default is 1
                     lang        : default 'EN',
                     dataXML     : An XML string representing the chart canvas config and data series (.chartData)
@@ -178,8 +180,6 @@
                           cls     :'x-media x-media-swf x-chart-fusion',
                           params  : {
                               wmode     :'opaque',
-                              scale     :'exactfit',
-                              scale       : null,
                               salign      : null
                                },
                           boundExternals :
@@ -261,23 +261,25 @@
          /* assemble a valid mediaCfg for use with Fusion defined Chart SWF variables */
            var mc = this.mediaCfg;
            var cCfg = this.chartCfg || (this.chartCfg = {});
+
            cCfg.params                = this.assert( cCfg.params,{});
            cCfg.params[this.varsName] = this.assert( cCfg.params[this.varsName],{});
 
            cCfg.params[this.varsName] = Ext.apply({
               chartWidth  :  '@width' ,
               chartHeight :  '@height',
+              scaleMode   : mc.autoSize ? 'exactFit' : 'noScale',
               debugMode   : 0,
               DOMId       : '@id',
             registerWithJS: 1,
          allowScriptAccess: "@scripting" ,
+
               lang        : 'EN',
               dataXML     : this.assert(this.dataXML || this.chartData || this.blankChartData,null),
               dataURL     : this.dataURL ? encodeURI(this.prepareURL(this.dataURL)) : null
           }, cCfg.params[this.varsName]);
 
           chart.Fusion.Adapter.superclass.onBeforeMedia.call(this);
-
 
       },
 
@@ -364,7 +366,7 @@
     };
 
     //Bind Fusion callbacks to an Ext.Event for the corresponding chart.
-    Ext.each(['FC_DataLoaded', 'FC_DataLoadError' ,'FC_NoDataToDisplay','FC_DataXMLInvalid'],
+    Ext.each(['FC_DataLoaded', 'FC_DataLoadError' ,'FC_NoDataToDisplay','FC_DataXMLInvalid','FC_Exported'],
 
       function(fnName){
         var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^FC_/i,'')],0);
