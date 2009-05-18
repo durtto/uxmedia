@@ -3,6 +3,7 @@
   * @class Ext.ux.Chart.FlashAdapter
   * @extends Ext.ux.Media.Flash
   * @version 2.1
+  * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
   * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
   * @author Doug Hendricks,.doug[always-At]theactivegroup.com
   * @desc
@@ -45,19 +46,20 @@
         */
        dataURL         : null,
 
-        /**
-        * @cfg {String/Object} autoLoad Url string or {@link #Ext.ux.Chart.FlashAdapter-load} method config object.
+       /**
+        * @cfg {String/Object} autoLoad Url string or{@link #Ext.ux.Chart.FlashAdapter-load} method config object.
         */
        autoLoad        : null,
 
-        /**
-         * @cfg {Boolean/Object} loadMask True to mask the Component while the Chart object itself is being
-         * initially loaded.  See {@link Ext.ux.IntelliMask} for configuration options.
+       /**
+        * @cfg {Boolean/Object} loadMask True to mask the Component while the Chart object itself is being
+        * initially loaded.  See{@link Ext.ux.IntelliMask} for configuration options.
         */
        loadMask        : null,
-        /**
-         * @cfg {Boolean/Object} mediaMask True to mask the Component while the Chart class loads data to update the
-         * chart during {@link #Ext.ux.Chart.FlashAdapter-load} operations.  See {@link Ext.ux.IntelliMask} for configuration options.
+
+       /**
+        * @cfg {Boolean/Object} mediaMask True to mask the Component while the Chart class loads data to update the
+        * chart during {@link #Ext.ux.Chart.FlashAdapter-load} operations.  See {@link Ext.ux.IntelliMask} for configuration options.
         */
        mediaMask       : null,
 
@@ -99,7 +101,7 @@
        chartCfg       : null,
 
        /**
-       * The default Flash Externalinterface object as defined by the {@link #Ext.ux.Chart.FlashAdapter-externalsNamespace} config value.
+       * The default Flash Externalinterface object as defined by the{@link #Ext.ux.Chart.FlashAdapter-externalsNamespace} config value.
        *<p>Use this object to access public methods/properties defined by the Flash Chart implementation.
        * @property {DOMElement} chart
        *
@@ -136,7 +138,7 @@
            this.addEvents(
 
                /**
-                * Fires after a succesfull {@link #Ext.ux.Chart.FlashAdapter-load} method attempt but before the retrieved data is submitted to the chart.
+                * Fires after a succesfull{@link #Ext.ux.Chart.FlashAdapter-load} method attempt but before the retrieved data is submitted to the chart.
                 * @event beforeload
                 * @param {Ext.ux.Chart} chart this chart component
                 * @param {Element} chartObject the underlying chart component DOM reference
@@ -148,7 +150,7 @@
                'beforeload',
 
                /**
-                * Fires when the the {@link #Ext.ux.Chart.FlashAdapter-load} method attempt reports an error condition.
+                * Fires when the the{@link #Ext.ux.Chart.FlashAdapter-load} method attempt reports an error condition.
                 * @event loadexception
                 * @param {Ext.ux.Chart} chart this chart component
                 * @param {Element} chartObject the underlying chart component DOM reference
@@ -266,10 +268,10 @@
        * <li>timeout : <b>Number</b><p class="sub-desc">The number of seconds to wait for a response before
        * timing out (defaults to 30 seconds).</p></li>
        * <li>text : <b>String</b><p class="sub-desc">The text to use to override the default loadMask text of the
-       * {@link #Ext.ux.Chart.FlashAdapter-loadMask} div if {@link #Ext.ux.Chart.FlashAdapter-autoMask} is enabled.</p></li>
+       * {@link #Ext.ux.Chart.FlashAdapter-loadMask} div if{@link #Ext.ux.Chart.FlashAdapter-autoMask} is enabled.</p></li>
        * <li>disableCaching: <b>Boolean</b><p class="sub-desc">Only needed for GET
        * requests, this option causes an extra, auto-generated parameter to be appended to the request
-       * to defeat caching (defaults to {@link #Ext.ux.Chart.FlashAdapter-disableCaching}).</p></li></ul>
+       * to defeat caching (defaults to{@link #Ext.ux.Chart.FlashAdapter-disableCaching}).</p></li></ul>
        * <p>
       *
       * @param {Object/String/Function} url A config object containing any of the following options:

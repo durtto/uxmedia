@@ -32,6 +32,8 @@
 
  Version:  2.1
 
+ Fusion Chart wrapper support for Fusion Free, 3.0, 3.1
+
  Component Config Options:
 
    chartUrl    : the URL of the desired Fusion_Chart_Object.swf
@@ -72,6 +74,7 @@
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -111,6 +114,14 @@
         */
        dataURL         : null,
 
+        /**
+         * @cfg {Object/String/Function} autoLoad
+         * A valid url spec according to the {@link #Ext.ux.Chart.FlashAdapter-load} method.
+         * If autoLoad is not null, the panel will attempt to load its chart data
+         * via an Ext.Ajax request immediately upon render.<p>
+         * The URL will become the default dataURL for this componenent's chart.
+         * </p>
+         */
        autoLoad        : null,
 
        /**
@@ -148,9 +159,9 @@
 
        /**
         * @cfg {String} autoScroll
-        * @default "false"
+        * @default "true"
         */
-       autoScroll      : false,
+       autoScroll      : true,
 
        /** @private
         * default mediaCfg(fusionCfg) for a FusionChart object
@@ -162,7 +173,7 @@
                           height  : null,
                           width   : null,
                           autoSize : true,
-                          renderOnResize:true, //Fusion required after reflow
+                          renderOnResize:true, //Fusion required after reflow for < Fusion 3.1
                           scripting : 'always',
                           cls     :'x-media x-media-swf x-chart-fusion',
                           params  : {
@@ -171,27 +182,72 @@
                               scale       : null,
                               salign      : null
                                },
-                          boundExternals : ['print', 'saveAsImage', 'setDataXML', 'setDataURL']
+                          boundExternals :
+                                ['print',
+                                'saveAsImage',
+                                'setDataXML',
+                                'setDataURL',
+                                'getDataAsCSV',
+                                'getXML',
+                                'getChartAttribute',
+                                'hasRendered',
+                                'signature',
+                                'exportChart'
+                                ]
         },
 
        /** @private */
        initMedia   : function(){
 
+           this.addEvents(
             //Defined in FlashAdaper superclass
-           /**
-            * Fires when the underlying chart component reports an initialized state
-            * @event chartload
-            * @param {Ext.ux.Chart.Fusion} this
-            * @param {object} the underlying chart component DOM reference
-            */
+              /**
+               * Fires when the underlying chart component reports an initialized state
+               * @event chartload
+               * @param {Ext.ux.Chart.Fusion} this
+               * @param {object} the underlying chart component DOM reference
+               */
 
-          /**
-           * Fires when the underlying chart component has rendered its chart series data.
-           * @event chartrender
-           * @param {Ext.ux.Chart.Fusion} this
-           * @param {object} the underlying chart component DOM reference
-           */
+             /**
+              * Fires when the underlying chart component has rendered its chart series data.
+              * @event chartrender
+              * @param {Ext.ux.Chart.Fusion} this
+              * @param {object} the underlying chart component DOM reference
+              */
 
+              /**
+               * Fires when the data of the chart has finished loading - (when loaded by the Fusion chart only)
+               * @event dataloaded
+               * @param {Ext.ux.Chart} chart this Chart Component
+               * @param {Element} chartObject the underlying chart component DOM reference
+               */
+
+              'dataloaded',
+
+             /**
+              * Fires when When there was an error in loading data from the specified URL (when loaded by the Fusion chart only)
+              * @event dataloaderror
+              * @param {Ext.ux.Chart} chart this Chart Component
+              * @param {Element} chartObject the underlying chart component DOM reference
+              */
+              'dataloaderror',
+
+              /**
+                * Fires when the XML data loaded by chart didn't contain any data to display.
+                * @event nodatatodisplay
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                */
+              'nodatatodisplay',
+
+               /**
+                * Fires when the XML data loaded by chart was invalid (wrong XML structure)
+                * @event dataxmlinvalid
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                */
+              'dataxmlinvalid'
+            );
             //For compat with previous versions < 2.1
            this.chartCfg || (this.chartCfg = this.fusionCfg || {});
 
@@ -293,12 +349,38 @@
 
     window.FC_Rendered = window.FC_Rendered ? window.FC_Rendered.createInterceptor(chart.FlashAdapter.chartOnRender):chart.FlashAdapter.chartOnRender;
     window.FC_Loaded   = window.FC_Loaded   ? window.FC_Loaded.createInterceptor(chart.FlashAdapter.chartOnLoad):chart.FlashAdapter.chartOnLoad;
-  /**
+
+
+    /*
+     * The following callbacks-to-events are only supported by Fusion Charts 3.1 or higher.
+     */
+    var dispatchEvent = function(name, id){
+
+        var c, d = Ext.get(id);
+        if(d && (c = d.ownerCt)){
+           c.fireEvent.apply(c, [name, c, c.getInterface()].concat(Array.prototype.slice.call(arguments,2)));
+        }
+        c = d =null;
+    };
+
+    //Bind Fusion callbacks to an Ext.Event for the corresponding chart.
+    Ext.each(['FC_DataLoaded', 'FC_DataLoadError' ,'FC_NoDataToDisplay','FC_DataXMLInvalid'],
+
+      function(fnName){
+        var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^FC_/i,'')],0);
+        window[fnName] = typeof window[fnName] == 'function' ? window[fnName].createInterceptor(cb): cb ;
+
+     });
+
+
+
+    /**
      * @class Ext.ux.Chart.Fusion.Component
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      * @param {Object} config The config object
@@ -315,6 +397,7 @@
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -333,6 +416,7 @@
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -357,6 +441,7 @@
      * @extends Ext.ux.Chart.Fusion.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -372,6 +457,4 @@
     Ext.reg('fusionwindow', Ext.ux.Chart.Fusion.Window);
 })();
 
-if (Ext.provide) {
-    Ext.provide('uxfusion');
-}
+if (Ext.provide) { Ext.provide('uxfusion');}
