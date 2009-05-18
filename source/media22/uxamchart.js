@@ -45,6 +45,7 @@
      * @extends Ext.ux.Chart.FlashAdapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @abstract
@@ -330,6 +331,7 @@
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -350,6 +352,7 @@
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -370,6 +373,7 @@
 
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -393,6 +397,7 @@
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -415,6 +420,7 @@
      * @class Ext.ux.Chart.amStock.Adapter
      * @extends Ext.ux.Chart.amChart.Adapter
      * @version 1.0
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
@@ -522,6 +528,7 @@
      * @extends Ext.ux.Chart.amStock.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -541,6 +548,7 @@
      * @version 2.1
      * @extends Ext.ux.Chart.amStock.Adapter
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -559,6 +567,7 @@
      * @extends Ext.ux.Media.Flash.Panel
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
@@ -585,6 +594,7 @@
      * @extends Ext.ux.Chart.amStock.Adapter
      * @version 2.1
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
