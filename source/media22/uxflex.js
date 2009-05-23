@@ -20,7 +20,7 @@
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
  Version:
-        1.0 RC1
+        1.0 RC1.01
         
  Ext Component Implementation of the FAbridge (Flex/ActionScript -> Javascript bridge)
  FABridge.js is NOT required.
@@ -151,10 +151,10 @@
      * @memberOf Ext.ux.Media.Flex
      */
     Ext.apply(ux.Flex, {
-	    onFlexBridge : function(bridgeId){
+	    onFlexBridge : function(bridgeId, b,c){
 	        var c, d = Ext.get(bridgeId[0]);
 	        if(d && (c = d.ownerCt)){
-	            c.onFlexInit && c.onFlexInit.defer(1, c);
+	            c.onFlexInit && c.onFlexInit(); //.defer(1, c);
 	            c = d = null;
 	            return false;
 	        }
@@ -201,6 +201,7 @@
         
         nextBridgeID : 0,
         idMap        : {},
+        nextLocalFuncID : 0,
         argsToArray : function(args) {
 		    var result = [];
 		    for(var i=0;i<args.length;i++) {
@@ -221,7 +222,7 @@
     });
     
     window.FABridge__bridgeInitialized = Ext.type(window.FABridge__bridgeInitialized) == 'function' ? 
-        window.FABridge__bridgeInitialized.createInterceptor(ux.Flex.onFlexBridge):
+        window.FABridge__bridgeInitialized.createInterceptor(ux.Flex.onFlexBridge): 
             ux.Flex.onFlexBridge;
             
     window.FABridge__invokeJSFunction = function(args){
@@ -237,7 +238,7 @@
       * @class Ext.ux.Media.Flex.Component
       * @extends Ext.ux.Media.Flash.Component
       * @base Ext.ux.Media.Flex
-      * @version 1.0 RC1
+      * @version 1.0 RC1.01
       * @author Doug Hendricks. doug[always-At]theactivegroup.com
       * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
       * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -273,7 +274,7 @@
      *
      * @class Ext.ux.Media.Flex.Panel
      * @extends Ext.ux.Media.Flash.Panel
-     * @version 1.0 RC1
+     * @version 1.0 RC1.01
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -326,7 +327,7 @@
     *
     * @class Ext.ux.Media.Flex.Window
     * @extends Ext.ux.Media.Flash.Window
-    * @version  1.0
+    * @version  RC1.1
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -352,12 +353,20 @@
     * FABridge Bindings are maintained on the Flex.Element
     */
    Ext.ux.Media.Flex.Element = Ext.extend ( Ext.ux.Media.Flash.Element , {
+    
+        constructor : function(){
        
-        remoteTypeCache : {},
-        remoteInstanceCache : {},
-        remoteFunctionCache : {},
-        localFunctionCache : {},
-        nextLocalFuncID : 0,   
+            Ext.apply(this,{
+		        remoteTypeCache : {},
+		        remoteInstanceCache : {},
+		        remoteFunctionCache : {},
+		        localFunctionCache : {},
+		        nextLocalFuncID : 0
+            });
+            
+            ux.Flex.Element.superclass.constructor.apply(this, arguments);
+        },
+           
         
         /**
          * accessor for retrieving a proxy to the root object
@@ -410,6 +419,7 @@
 	    getPropertyFromAS: function(objRef,propName) 
 	    {
             if(!!ux.Flex.refCount){
+                
                 throw new Error(ux.Flex.RECURSION_ERROR);
             }
             ux.Flex.refCount++;
@@ -423,6 +433,7 @@
          */
 	    setPropertyInAS: function(objRef,propName,value){
             if(!!ux.Flex.refCount){
+                
                 throw new Error(ux.Flex.RECURSION_ERROR);
             }
             ux.Flex.refCount++;
@@ -483,23 +494,6 @@
 		// Object Types and Proxies
 		/*----------------------------------------------------------------------------------*/
 		
-        getUserTypeDescriptor: function(objTypeName){
-	         var simpleType = objTypeName.replace(/^([^:]*)\:\:([^:]*)$/, "$2");
-	         var isUserProto = ((typeof window[simpleType] == "function") && (typeof ux.Flex.userTypes[simpleType] != "undefined"));
-	 
-	         var protoEnriched = false;
-	        
-	         if (isUserProto) {
-	              protoEnriched = ux.Flex.userTypes[simpleType].enriched;
-	         }
-	         var toret = {
-	                 'simpleType': simpleType,
-	                 'isUserProto': isUserProto,
-	                 'protoEnriched': protoEnriched
-	         };
-	         return toret;
-         }, 
-        
 		// accepts an object reference, returns a type object matching the obj reference.
         getTypeFromName: function(objTypeName){
             return this.remoteTypeCache[objTypeName];
@@ -541,13 +535,26 @@
 	    addPropertyToType: function(ty,propName){
 	        
 	        var c = propName.charAt(0);
-	        var setterName = "set" + (c >= "a" && c <= "z" ? c.toUpperCase() + propName.substr(1): propName);
+	        var setterName;
+	        var getterName;
+	        if(c >= "a" && c <= "z")
+	        {
+	            getterName = "get" + c.toUpperCase() + propName.substr(1);
+	            setterName = "set" + c.toUpperCase() + propName.substr(1);
+	        }
+	        else
+	        {
+	            getterName = "get" + propName;
+	            setterName = "set" + propName;
+	        }
 	        ty[setterName] = function(val) {
 	            this.bridge.setPropertyInAS(this.id,propName,val);
-	        }
-            ty[propName] = function() {
-                return this.bridge.deserialize(this.bridge.getPropertyFromAS(this.id,propName));
-            }
+	        };
+            //Maintain get accessor compat with older FABRidge implementations
+            ty[propName] = ty[getterName] = function(){
+	            return this.bridge.deserialize(this.bridge.getPropertyFromAS(this.id, propName));
+	        };
+            
 	    },
 	
 	    addMethodToType: function(ty,methodName){
