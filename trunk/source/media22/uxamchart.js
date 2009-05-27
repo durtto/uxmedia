@@ -49,6 +49,7 @@
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @abstract
+     * @description Abstract class with support for amChart 1.6.0.0
      */
     Ext.ux.Chart.amChart.Adapter = Ext.extend( Ext.ux.Chart.FlashAdapter, {
 
@@ -134,7 +135,158 @@
                  * @param {Mixed} error The Error.
                  */
 
-               'error'
+               'error',
+
+               /**
+                 * Fires when the chart finishes doing some task triggered by another JavaScript function.
+                 * @event processcompleted
+                 * @param {Ext.ux.Chart} chart this Chart Component
+                 * @param {Element} chartObject the underlying chart component DOM reference
+                 * @param {String} process_name The name of the reporting process.
+                 */
+
+               'processcompleted',
+
+               /**
+                * Fires when the user clicks on a bullet.
+                * @event clickedonbullet
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                * @param {Number} graph_index
+                * @param {Mixed} value
+                * @param {Number} series
+                * @param {String} url
+                * @param {String} description
+                */
+
+               'clickedonbullet',
+
+               /**
+               * Fires when the user rolls over a bullet.
+               * @event rolledoverbullet
+               * @param {Ext.ux.Chart} chart this Chart Component
+               * @param {Element} chartObject the underlying chart component DOM reference
+               * @param {Number} graph_index
+               * @param {Mixed} value
+               * @param {Number} series
+               * @param {String} url
+               * @param {String} description
+               */
+
+               'rolledoverbullet',
+
+              /**
+               * Fires when the viewer moves the mouse over the plot area. It returns the value of the series over which the mouse is currently hovered.
+               * @event rolledoverseries
+               * @param {Ext.ux.Chart} chart this Chart Component
+               * @param {Element} chartObject the underlying chart component DOM reference
+               * @param {Mixed} series
+               */
+
+               'rolledoverseries',
+
+                /**
+                * Fires when the viewer clicks somewhere on the plot area. It returns the value of the series over which the mouse hovered when it was clicked.
+                * @event clickedonseries
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                * @param {Mixed} series
+                */
+
+               'clickedonseries',
+
+                 /**
+                  * Fires when the viewer rolls over the slice. It the sequential number of the slice (index), the title, value, percent value, color and description.
+                  * @event sliceover
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Number} index Slice index
+                  * @param {String} title
+                  * @param {Number} value
+                  * @param {Number} percents
+                  * @param {String} color
+                  * @param {String} description
+                  */
+
+               'sliceover',
+                /**
+                  * Fires when the viewer clicks on the slice. It the sequential number of the slice (index), the title, value, percent value, color and description.
+                  * @event sliceclick
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Number} index Slice index
+                  * @param {String} title
+                  * @param {Number} value
+                  * @param {Number} percents
+                  * @param {String} color
+                  * @param {String} description
+                  */
+                'sliceclick',
+
+
+                 /**
+                  * Fires when the viewer rolls away from the slice.
+                  * @event sliceout
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  */
+
+               'sliceout',
+
+                 /**
+                  * Fires when the viewer hides the graph by clicking on the checkbox in the legend. Index is the sequential number of a graph in your settings, counting from 0.
+                  * @event graphhide
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Number} index
+                  * @param {String} title
+                  */
+
+               'graphhide',
+
+                 /**
+                  * Fires when the viewer shows the graph by clicking on the checkbox in the legend. Index is the sequential number of a graph in your settings, counting from 0.
+                  * @event graphshow
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Number} index
+                  * @param {String} title
+                  */
+
+               'graphshow',
+
+                 /**
+                  * Fires when the viewer selects the graph by clicking on it or on the graph's legend entry. Index is the sequential number of a graph in your settings, counting from 0.
+                  * @event graphselect
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Number} index
+                  * @param {String} title
+                  */
+
+               'graphselect',
+
+                 /**
+                  * Fires when the viewer deselects the graph by clicking on it or on the graph's legend entry. Index is the sequential number of a graph in your settings, counting from 0.
+                  * @event graphdeselect
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Number} index
+                  * @param {String} title
+                  */
+
+               'graphdeselect',
+
+                 /**
+                  * Fires when the selected period is changed, also when the chart is initialized.
+                  * @event getzoom
+                  * @param {Ext.ux.Chart} chart this Chart Component
+                  * @param {Element} chartObject the underlying chart component DOM reference
+                  * @param {Date} from
+                  * @param {Date} to
+                  */
+
+               'getzoom'
             );
 
             chart.amChart.Adapter.superclass.initMedia.call(this);
@@ -194,7 +346,22 @@
                                             'getSettings', 'rebuild', 'reloadData',
                                             'reloadSettings', 'reloadAll', 'setParam',
                                             'getParam', 'getData', 'exportImage',
-                                            'print', 'printAsBitmap' ]
+                                            'print', 'printAsBitmap','setEvents',
+
+                                            //line and area methods
+                                            'showGraph',
+                                            'hideGraph',
+                                            'selectGraph',
+                                            'deselectGraph',
+                                            'setZoom',
+                                            'showAll',
+
+                                            //pie and donut methods
+                                            'rollOverSlice',
+                                            'rollOutSlice',
+                                            'clickSlice'
+
+                                            ]
 
         },
 
@@ -281,20 +448,20 @@
            return this;
         },
 
-     /**
-      * Set/update the current chart with a new Data series URL
-      * @param {String} url The URL of the stream to update with.
-      * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
-      */
-      setChartDataURL  : function(url, immediate){
-          var o;
-          this.dataURL = url;
-          if(url && (o = this.getInterface()) && immediate !== false){
-              o.reloadData(encodeURI(this.prepareURL(url)));
+         /**
+          * Set/update the current chart with a new Data series URL
+          * @param {String} url The URL of the stream to update with.
+          * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
+          */
+        setChartDataURL  : function(url, immediate){
+              var o;
+              this.dataURL = url;
+              if(url && (o = this.getInterface()) && immediate !== false){
+                  o.reloadData(encodeURI(this.prepareURL(url)));
 
-          }
-          return this;
-       }
+              }
+              return this;
+           }
 
     });
 
@@ -314,17 +481,40 @@
         c = d =null;
     };
 
-    //Bind amChart callbacks to an Ext.Event for the corresponding chart.
-    Ext.each(['amReturnData', 'amReturnSettings' ,'amReturnImageData','amReturnParam','amError',
-
-      //These are unique to the stock Chart object
-      'amRolledOver', 'amClickedOn', 'amRolledOverEvent', 'amClickedOnEvent', 'amGetZoom'],
-
-      function(fnName){
+    var bindFunction = function(fnName){
         var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^am/i,'')],0);
         window[fnName] = typeof window[fnName] == 'function' ? window[fnName].createInterceptor(cb): cb ;
+     };
 
-     });
+    //Bind amChart callbacks to an Ext.Event for the corresponding chart.
+    Ext.each([  'amProcessCompleted',
+                'amReturnData',
+                'amReturnSettings' ,
+                'amReturnImageData',
+                'amReturnParam',
+                'amError',
+
+                //These are unique to the stock Chart object
+                'amRolledOver',
+                'amClickedOn',
+
+                'amClickedOnEvent',
+                'amClickedOnBullet',
+                'amClickedOnSeries',
+                'amRolledOverEvent',
+                'amRolledOverBullet',
+                'amRolledOverSeries',
+                'amGetZoom',
+                'amGraphHide',
+                'amGraphShow',
+                'amGraphSelect',
+                'amGraphDeselect',
+                'amSelectDataSet',
+                'amCompareDataSet',
+                'amUncompareDataSet',
+                'amGetStatus'
+                ],
+      bindFunction);
 
     /**
      * @class Ext.ux.Chart.amChart.Component
@@ -449,8 +639,10 @@
                                         'getParam', 'getData', 'exportImage',
                                         'print', 'printAsBitmap', 'setZoom',
                                         'showAll', 'selectDataset', 'compareDataset',
-                                        'uncompareDataset', 'uncompareAll'
-                                        ]
+                                        'uncompareDataset', 'uncompareAll', 'hideEvents',
+                                        'showEvents','removeDataSet','removeChart',
+                                        'removeGraph','hideGraph','showGraph','getStatus',
+                                        'setStatus','setEvents' ]
           },
 
            /** @private */
@@ -505,16 +697,45 @@
                        'clickedonevent',
 
 
-                      /**
-                       * Fires when the selected period is changed
-                       * @event getzoom
-                       * @param {Ext.ux.Chart} this
-                       * @param {Element} chartObject the underlying chart component DOM reference
-                       * @param {Mixed} from From
-                       * @param {Mixed} to To
-                       */
+                        /**
+                         * Fires when the user changes main data set.
+                         * @event selectdataset
+                         * @param {Ext.ux.Chart} this
+                         * @param {Element} chartObject the underlying chart component DOM reference
+                         * @param {Mixed} did DatasetId
+                         */
 
-                     'getzoom'
+                     'selectdataset',
+
+                        /**
+                         * Fires when the user selects a data set for comparison.
+                         * @event comparedataset
+                         * @param {Ext.ux.Chart} this
+                         * @param {Element} chartObject the underlying chart component DOM reference
+                         * @param {Mixed} did DatasetId
+                         */
+
+                     'comparedataset',
+                        /**
+                         * Fires when the user deselects a data set for comparison.
+                         * @event uncomparedataset
+                         * @param {Ext.ux.Chart} this
+                         * @param {Element} chartObject the underlying chart component DOM reference
+                         * @param {Mixed} did DatasetId
+                         */
+
+                     'uncomparedataset',
+
+                        /**
+                         * Fires when the selected period is changed.
+                         * @event getstatus
+                         * @param {Ext.ux.Chart} this
+                         * @param {Element} chartObject the underlying chart component DOM reference
+                         * @param {Mixed} status DatasetId
+                         */
+
+                     'getstatus'
+
                   );
 
                   chart.amStock.Adapter.superclass.initMedia.call(this);
