@@ -107,42 +107,9 @@
         onFlexInit : function(){
            var M;
            if(M = this.mediaObject){
-	            M.bridgeID = ux.Flex.nextBridgeID++;
-	            ux.Flex.idMap[M.bridgeID] = M;
                 if(this.mediaMask && this.autoMask){this.mediaMask.hide();}
                 this.fireEvent.defer(300,this,['flexinit',this]);
            }
-        },
-        
-        /**
-         * @private
-         * Dispatches events received from the SWF object (when defined by the eventSynch mediaConfig option).
-         *
-         * @method _handleSWFEvent
-         * @private
-         */
-        _handleSWFEvent: function(event)
-        {
-            var type = event.type||event||false;
-            if(type){
-                 if(this.events && !this.events[String(type)])
-                     { this.addEvents(String(type));}
-
-                 return this.fireEvent.apply(this, [String(type), this].concat(Array.prototype.slice.call(arguments,0)));
-            }
-        },
-        /** Remove (safely) an existing mediaObject from the Component.
-         *
-         */
-        clearMedia  : function(){
-
-           //release Flex bindings
-           var M;
-           if(M = this.mediaObject){
-              M.releaseASObjects();
-              M.bridgeID && (delete ux.Flex.idMap[M.bridgeID]);
-           }
-           ux.Flex.superclass.clearMedia.call(this);
         }
     });
         
@@ -154,7 +121,7 @@
 	    onFlexBridge : function(bridgeId, b,c){
 	        var c, d = Ext.get(bridgeId[0]);
 	        if(d && (c = d.ownerCt)){
-	            c.onFlexInit && c.onFlexInit(); //.defer(1, c);
+	            c.onFlexInit && c.onFlexInit(); 
 	            c = d = null;
 	            return false;
 	        }
@@ -162,17 +129,6 @@
 	        d= null;
            
 	    },
-        
-        userTypes : {},
-  
-		addToUserTypes : function(){
-          for (var i = 0; i < arguments.length; i++){
-              ux.Flex.userTypes[arguments[i]] = {
-                      'typeName': arguments[i],
-                      'enriched': false
-              };
-          }
-		},
         
         extractBridgeFromID : function(id) {
             return ux.Flex.idMap[(id >> 16)];
@@ -355,15 +311,15 @@
    Ext.ux.Media.Flex.Element = Ext.extend ( Ext.ux.Media.Flash.Element , {
     
         constructor : function(){
-       
             Ext.apply(this,{
 		        remoteTypeCache : {},
 		        remoteInstanceCache : {},
 		        remoteFunctionCache : {},
 		        localFunctionCache : {},
-		        nextLocalFuncID : 0
+		        nextLocalFuncID : 0,
+                bridgeID : ux.Flex.nextBridgeID++
             });
-            
+            ux.Flex.idMap[this.bridgeID] = this;            
             ux.Flex.Element.superclass.constructor.apply(this, arguments);
         },
            
@@ -669,7 +625,19 @@
 	            }
 	        }
 	        return result;
-	      }
+	      },
+          
+          remove  : function(){
+             this.releaseASObjects();
+             
+             delete this.remoteTypeCache;
+             delete this.remoteInstanceCache;
+             delete this.remoteFunctionCache;
+             delete this.localFunctionCache;
+             
+             delete ux.Flex.idMap[this.bridgeID];
+             ux.Flex.Element.superclass.remove.apply(this, arguments);
+          }
 
     });
    
