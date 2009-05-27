@@ -367,10 +367,9 @@
                     window[id+'_DoFSCommand']= null;
                     delete window[id+'_DoFSCommand'];
                }
-
            }
 
-           ux.Flash.superclass.clearMedia.call(this);
+           return ux.Flash.superclass.clearMedia.call(this) || this;
 
         },
 
@@ -567,7 +566,7 @@
         _arrayToXML  : function(arrObj){
 
             var s = "<array>";
-            for (var i = 0; i < arrObj.length; i++) {
+            for (var i = 0,l = arrObj.length ; i < l; i++) {
                 s += "<property id=\"" + i + "\">" + this._toXML(arrObj[i]) + "</property>";
             }
             return s + "</array>";
@@ -613,7 +612,6 @@
 
           this.addEvents(
 
-
              /**
               * Fires when the Flash Object reports an initialized state via a public callback function.
               * @event flashinit
@@ -658,7 +656,7 @@
 
         }
 
-  };
+    };
 
 
      /**
@@ -890,7 +888,6 @@
    });
 
    Ext.ux.Media.Flash.prototype.elementClass  =  Ext.ux.Media.Flash.Element;
-            //this.elementClass  =  Ext.ux.Media.Flash.Element;
 
    var writeScript = function(block, attributes) {
         attributes = Ext.apply({},attributes||{},{type :"text/javascript",text:block});

@@ -17,7 +17,7 @@
 
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
- Version   2.1  11/11/2009
+ Version   2.1  11/11/2008
           Fixes:
             Corrects missing unsupportedText markup rendering.
             Corrects inline markup rendering.
@@ -108,10 +108,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
                (obj[member] === null || obj[member] === undefined) || (out[member] = obj[member]);
             }
             return out;
-
         };
-
-
 
    /**
     *
@@ -192,7 +189,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
          _maxPoll        : 200,
 
-
          /** @private */
          getMediaType: function(type){
              return ux.mediaTypes[type];
@@ -220,18 +216,14 @@ Ext.removeNode =  Ext.isIE ? function(n){
          prepareURL : function(url, disableCaching){
             var parts = url ? url.split('#') : [''];
             if(!!url && (disableCaching = disableCaching === undefined ? this.disableCaching : disableCaching) ){
-
                 var u = parts[0];
-
                 if( !(/_dc=/i).test(u) ){
-
                     var append = "_dc=" + (new Date().getTime());
                     if(u.indexOf("&") !== -1){
                         u += "&" + append;
                     }else{
                         u += "?" + append;
                     }
-
                     parts[0] = u;
                 }
             }
@@ -368,11 +360,9 @@ Ext.removeNode =  Ext.isIE ? function(n){
                            m = m.replace(new RegExp('((%40|@)'+n+')','g'),_m+'');
                       }
                     }
-
                   }
                   return m;
             }
-
          },
 
          /** @private
@@ -409,25 +399,16 @@ Ext.removeNode =  Ext.isIE ? function(n){
               }
               var mc = (this.mediaCfg = mediaCfg || this.mediaCfg) ;
               ct = Ext.get(this.lastCt || ct || (this.mediaObject?this.mediaObject.dom.parentNode:null));
-
               this.onBeforeMedia.call(this, mc, ct, domPosition , w , h);
-
               if(ct){
                   this.lastCt = ct;
                   if(mc && (mc = this.prepareMedia(mc, w, h, ct))){
                      this.setMask(ct);
-
-                     if(this.mediaMask && this.autoMask){
-                          this.mediaMask.show();
-                     }
-                     this.clearMedia();
-
-                     this.writeMedia(mc, ct, domPosition || 'afterbegin');
-
+                     this.mediaMask && this.autoMask && this.mediaMask.show();
+                     this.clearMedia().writeMedia(mc, ct, domPosition || 'afterbegin');
                   }
               }
               this.onAfterMedia(ct);
-
           },
 
           /** @private
@@ -439,7 +420,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
                 domPosition ? Ext.DomHelper.insertHtml(domPosition,ct.dom,this.mediaMarkup(mediaCfg))
                   :ct.update(this.mediaMarkup(mediaCfg));
               }
-
           },
 
           /**
@@ -451,12 +431,12 @@ Ext.removeNode =  Ext.isIE ? function(n){
                 mo.remove(true,true);
             }
             this.mediaObject = null;
+            return this;
           },
 
            /** @private */
           resizeMedia   : function(comp, w, h){
               var mc = this.mediaCfg;
-
               if(mc && this.boxReady && mc.renderOnResize && (!!w || !!h)){
                   // Ext.Window.resizer fires this event a second time
                   if(arguments.length > 3 && (!this.mediaObject || mc.renderOnResize )){
@@ -629,12 +609,13 @@ Ext.removeNode =  Ext.isIE ? function(n){
             }
 
         },
-        onDestroy  :  function(){
-
+        /**
+         * @private
+         */
+        beforeDestroy  :  function(){
             this.clearMedia();
-            Ext.destroy(this.mediaMask,this.loadMask);
+            Ext.destroy(this.mediaMask, this.loadMask);
             this.lastCt = this.mediaObject = this.renderTo = this.applyTo = this.mediaMask = this.loadMask = null;
-
 
         }
     };
@@ -654,7 +635,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
     Ext.ux.Media.Component= Ext.extend ( Ext.BoxComponent, {
 
-
         ctype         : "Ext.ux.Media.Component",
 
         /**
@@ -667,43 +647,28 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
         cls     : "x-media-comp",
 
-
         mediaClass    : Ext.ux.Media,
-
         constructor   : function(){
-
          //Inherit the ux.Media class
           Ext.apply(this , this.mediaClass.prototype );
           ux.Component.superclass.constructor.apply(this, arguments);
-
         },
-
-
         /** @private */
         initComponent   : function(){
-
             ux.Component.superclass.initComponent.apply(this,arguments);
             componentAdapter.init.apply(this,arguments);
         },
-
-
         /** @private */
         afterRender  : function(ct){
             ux.Component.superclass.afterRender.apply(this,arguments);
             componentAdapter.afterRender.apply(this,arguments);
          },
-
          /** @private */
-        onDestroy   : function(){
-
-            componentAdapter.onDestroy.apply(this,arguments);
-            ux.Component.superclass.onDestroy.apply(this,arguments);
-
+        beforeDestroy   : function(){
+            componentAdapter.beforeDestroy.apply(this,arguments);
+            ux.Component.superclass.beforeDestroy.apply(this,arguments);
          },
-
         doAutoLoad : Ext.emptyFn,
-
-
          /** @private */
         setAutoScroll   : function(){
             if(this.rendered && this.autoScroll){
@@ -712,7 +677,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
         }
 
     });
-
 
     Ext.reg('uxmedia', Ext.ux.Media.Component);
     Ext.reg('media', Ext.ux.Media.Component);
@@ -753,31 +717,22 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
         },
 
-
         /** @private */
         initComponent   : function(){
-
             ux.Panel.superclass.initComponent.apply(this,arguments);
             componentAdapter.init.apply(this,arguments);
         },
-
-
         /** @private */
         afterRender  : function(ct){
             ux.Panel.superclass.afterRender.apply(this,arguments);
             componentAdapter.afterRender.apply(this,arguments);
          },
-
          /** @private */
-        onDestroy   : function(){
-
-            componentAdapter.onDestroy.apply(this,arguments);
-            ux.Panel.superclass.onDestroy.apply(this,arguments);
-
+        beforeDestroy  : function(){
+            componentAdapter.beforeDestroy.apply(this,arguments);
+            ux.Panel.superclass.beforeDestroy.apply(this,arguments);
          },
-
         doAutoLoad : Ext.emptyFn
-
     });
 
 
@@ -844,7 +799,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
            */
          mediaEl       : 'body',
 
-
         /** @private */
         initComponent   : function(){
             ux.Window.superclass.initComponent.apply(this,arguments);
@@ -857,11 +811,9 @@ Ext.removeNode =  Ext.isIE ? function(n){
             componentAdapter.afterRender.apply(this,arguments);
          },
          /** @private */
-        onDestroy   : function(){
-
-            componentAdapter.onDestroy.apply(this,arguments);
-            ux.Window.superclass.onDestroy.apply(this,arguments);
-
+        beforeDestroy   : function(){
+            componentAdapter.beforeDestroy.apply(this,arguments);
+            ux.Window.superclass.beforeDestroy.apply(this,arguments);
          },
 
         doAutoLoad : Ext.emptyFn
@@ -932,7 +884,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
                   //see: http://www.extjs.com/forum/showthread.php?p=252925#post252925
                   this._mask.setHeight(this.getHeight());
              }
-
              return this._mask;
          },
 
