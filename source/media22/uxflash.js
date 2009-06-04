@@ -406,7 +406,7 @@
 
         setVariable : function(varName, value){
             var fo = this.getInterface();
-            if(fo && typeof fo.SetVariable != 'undefined'){
+            if(fo && 'SetVariable' in fo){
                 fo.SetVariable(varName,value);
                 return true;
             }
@@ -421,7 +421,7 @@
         */
         getVariable : function(varName ){
             var fo = this.getInterface();
-            if(fo && typeof fo.GetVariable != 'undefined'){
+            if(fo && 'GetVariable' in fo){
                 return fo.GetVariable(varName );
             }
             fo = null;
@@ -472,14 +472,14 @@
 
             var obj,r;
 
-            if(method && (obj = this.getInterface()) && typeof obj.CallFunction !== 'undefined' ){
+            if(method && (obj = this.getInterface()) && 'CallFunction' in obj ){
                 var c = [
                     String.format('<invoke name="{0}" returntype="{1}">',method, returnType),
                     '<arguments>',
                     (Array.prototype.slice.call(arguments,2)).map(this._toXML, this).join(''),
                     '</arguments>',
                     '</invoke>'].join('');
-
+                
                 r = obj.CallFunction(c);
 
                 typeof r === 'string' && returnType ==='javascript' && (r= Ext.decode(r));
@@ -917,7 +917,6 @@
      * during the clearMedia method, but included to cleanup inline flash markup.
      */
     if(Ext.isIE && Ext.isWindows && ux.Flash.prototype.flashVersion.major == 9) {
-
 
         window.attachEvent('onbeforeunload', function() {
               __flash_unloadHandler = __flash_savedUnloadHandler = function() {};

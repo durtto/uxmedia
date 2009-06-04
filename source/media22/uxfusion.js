@@ -138,16 +138,17 @@
                   controls : true,
                   height  : null,
                   width   : null,
-                  autoSize : true,
-                  renderOnResize:true, //Fusion required after reflow
+                  autoSize : true, //if true, chart object consumes the entire component body  
+                  autoScale : false, //Fusion specific option, scales the chart text to size of its container
+                  renderOnResize:true, //if true, the chart will be rendered again after component resize
                   scripting : 'always',
                   cls     :'x-media x-media-swf x-chart-fusion',
                   flashVars : {
-                    chartWidth  : defaults to Component size metrics (macro @width)
-                    chartHeight : defaults to Component size metrics (macro @height)
+                    chartWidth  : defaults to Component actual size metrics (macro @width)
+                    chartHeight : defaults to Component actual size metrics (macro @height)
                     debugMode   : Fusion debug mode (0,1)
                     DOMId       : DOM Id of SWF object (macro '@id')
-                    scaleMode   : 'noScale',
+                    scaleMode   : 'noScale' (set based on autoScale value or may be overridden)
                     registerWithJS: Fusion specific (0,1) default is 1
                     lang        : default 'EN',
                     dataXML     : An XML string representing the chart canvas config and data series (.chartData)
@@ -175,7 +176,8 @@
                           height  : null,
                           width   : null,
                           autoSize : true,
-                          renderOnResize:true, //Fusion required after reflow for < Fusion 3.1
+                          autoScale : false,
+                          renderOnResize:true, //Fusion required after reflow for < Fusion 3.1 (use when autoScale is false)
                           scripting : 'always',
                           cls     :'x-media x-media-swf x-chart-fusion',
                           params  : {
@@ -246,7 +248,22 @@
                 * @param {Ext.ux.Chart} chart this Chart Component
                 * @param {Element} chartObject the underlying chart component DOM reference
                 */
-              'dataxmlinvalid'
+              'dataxmlinvalid',
+              
+               /**
+                * Fires when a server-side export is completed
+                * @event exported
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                */
+              'exported',
+              /**
+                * Fires when a client-side export is ready for a save operation
+                * @event exportready
+                * @param {Ext.ux.Chart} chart this Chart Component
+                * @param {Element} chartObject the underlying chart component DOM reference
+                */
+              'exportready'
             );
             //For compat with previous versions < 2.1
            this.chartCfg || (this.chartCfg = this.fusionCfg || {});
@@ -268,7 +285,7 @@
            cCfg.params[this.varsName] = Ext.apply({
               chartWidth  :  '@width' ,
               chartHeight :  '@height',
-              scaleMode   : mc.autoSize ? 'exactFit' : 'noScale',
+              scaleMode   : mc.autoScale ? 'exactFit' : 'noScale',
               debugMode   : 0,
               DOMId       : '@id',
             registerWithJS: 1,
@@ -366,7 +383,8 @@
     };
 
     //Bind Fusion callbacks to an Ext.Event for the corresponding chart.
-    Ext.each(['FC_DataLoaded', 'FC_DataLoadError' ,'FC_NoDataToDisplay','FC_DataXMLInvalid','FC_Exported'],
+    Ext.each(['FC_DataLoaded', 'FC_DataLoadError' ,
+        'FC_NoDataToDisplay','FC_DataXMLInvalid','FC_Exported','FC_ExportReady'],
 
       function(fnName){
         var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^FC_/i,'')],0);

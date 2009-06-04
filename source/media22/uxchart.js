@@ -64,6 +64,12 @@
        mediaMask       : null,
 
        autoMask        : null,
+       
+       /**
+        * @cfg {Boolean} disableCaching true to append a unique param to all URLs to defeat browser caching problems.
+        * @default true
+        */
+       disableCaching : true,
 
        /**
         * @cfg {Mixed} blankChartData The default data value (or a Function that returns the value) used to render an empty/blank chart.
