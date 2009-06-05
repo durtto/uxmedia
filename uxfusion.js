@@ -290,12 +290,13 @@
               DOMId       : '@id',
             registerWithJS: 1,
          allowScriptAccess: "@scripting" ,
-
               lang        : 'EN',
-              dataXML     : this.assert(this.dataXML || this.chartData || this.blankChartData,null),
+              dataXML     : this.dataURL ? null : 
+                     this.assert(this.dataXML || this.chartData || this.blankChartData,null),
               dataURL     : this.dataURL ? encodeURI(this.prepareURL(this.dataURL)) : null
           }, cCfg.params[this.varsName]);
-
+          
+          
           chart.Fusion.Adapter.superclass.onBeforeMedia.call(this);
 
       },
@@ -311,7 +312,7 @@
            this.chartData = xml;
            if( immediate !== false && (o = this.getInterface())){
 
-              if( o.setDataXML !== undefined ){
+              if( 'setDataXML' in o ){
 
                    o.setDataXML(xml);
 
@@ -345,7 +346,7 @@
           this.dataURL = url;
           if((o = this.getInterface()) && immediate !== false){
 
-              o.setDataURL !== undefined ?
+              'setDataURL' in o ?
                 o.setDataURL(url) :
                    //FusionCharts Free has no support for dynamic loading of URLs
                    this.load({url:url,nocache:this.disableCaching} );
