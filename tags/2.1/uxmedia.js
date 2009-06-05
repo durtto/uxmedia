@@ -321,6 +321,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
                  delete   m.scripting;
                  delete   m.volume;
                  delete   m.autoSize;
+                 delete   m.autoScale;
                  delete   m.params;
                  delete   m.unsupportedText;
                  delete   m.renderOnResize;
