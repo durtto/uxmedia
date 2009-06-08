@@ -486,7 +486,9 @@ Ext.removeNode =  Ext.isIE ? function(n){
           onAfterMedia   : function(ct){
                var mo;
                if(this.mediaCfg && ct && (mo = this.mediaObject =
-                       new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true) ))){
+                       new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true) ))
+                       && mo.dom
+                       ){
                    mo.ownerCt = this;
 
                    var L; //Reattach any DOM Listeners after rendering.
@@ -667,7 +669,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
          /** @private */
         beforeDestroy   : function(){
             componentAdapter.beforeDestroy.apply(this,arguments);
-            ux.Component.superclass.beforeDestroy.apply(this,arguments);
+            this.rendered && ux.Component.superclass.beforeDestroy.apply(this,arguments);
          },
         doAutoLoad : Ext.emptyFn,
          /** @private */
@@ -731,7 +733,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
          /** @private */
         beforeDestroy  : function(){
             componentAdapter.beforeDestroy.apply(this,arguments);
-            ux.Panel.superclass.beforeDestroy.apply(this,arguments);
+            this.rendered && ux.Panel.superclass.beforeDestroy.apply(this,arguments);
          },
         doAutoLoad : Ext.emptyFn
     });
@@ -814,7 +816,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
          /** @private */
         beforeDestroy   : function(){
             componentAdapter.beforeDestroy.apply(this,arguments);
-            ux.Window.superclass.beforeDestroy.apply(this,arguments);
+            this.rendered && ux.Window.superclass.beforeDestroy.apply(this,arguments);
          },
 
         doAutoLoad : Ext.emptyFn
@@ -1366,7 +1368,7 @@ Ext.ux.Media.mediaTypes =
                           ,autoplay     : "@start"
                           ,targetcache  : true
                           ,cache        : true
-                          ,wmode        : 'transparent'
+                          ,wmode        : 'opaque'
                           ,controller   : "@controls"
                       ,enablejavascript : "@scripting"
                           ,loop         : '@loop'
