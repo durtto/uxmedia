@@ -3,19 +3,28 @@ Ext.namespace('Ext.ux.plugin');
 
 /**
 * @class Ext.ux.plugin.VisibilityMode
-* @version  1.1
+* @version  1.2
 * @author Doug Hendricks. doug[always-At]theactivegroup.com
-* @copyright 2007-2008, Active Group, Inc.  All rights reserved.
+* @copyright 2007-2009, Active Group, Inc.  All rights reserved.
 * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 * @constructor
 * @desc
 * This plugin provides an alternate visibility mode to Ext.Elements and a new hideMode for Ext.Components.<br />
-* <p>It is generally designed for use with all browsers <b>except</b> Internet Explorer.
+* <p>It is generally designed for use with all browsers <b>except</b> Internet Explorer, but may used on that Browser as well.
 * <p>If included in a Component as a plugin, it sets it's hideMode to 'nosize' and provides a new supported
-* CSS rule that sets the height and width of an element and all child elements to 0 (rather than
+* CSS rule that sets the height and width of an element and all child elements to 0px (rather than
 * 'display:none', which causes DOM reflow to occur and re-initializes nested OBJECT, EMBED, and IFRAMES elements)
-* @example someContainer.add({
+* <p>For Elements, a new visibilityMode value (3) is implemented for fine-grain control over show/hide behavior</p>
+* 
+* @example 
+  var div = Ext.get('container');
+  div.setVisibilityMode(Ext.Element.NOSIZE);
+  //You can override the Element (instance) visibilityCls to any className you wish 
+  div.visibilityCls = 'my-hide-class';
+  div.hide();
+  
+  someContainer.add({
     xtype:'flashpanel',
     plugins: [new Ext.ux.plugin.VisibilityMode({hideMode:'nosize'}) ],
     ...
@@ -23,12 +32,12 @@ Ext.namespace('Ext.ux.plugin');
 
   //or, Fix a specific Container only and all of it's child items:
 
- var V = new Ext.ux.plugin.VisibilityMode({hideMode:'nosize', bubble : false }) ;
- new Ext.TabPanel({
-    plugins     : V,
-    defaults    :{ plugins: V },
-    items       :[....]
- });
+   var V = new Ext.ux.plugin.VisibilityMode({hideMode:'nosize', bubble : false }) ;
+   new Ext.TabPanel({
+     plugins     : V,
+     defaults    :{ plugins: V },
+     items       :[....]
+   });
 */
 
 Ext.onReady(function(){
@@ -48,94 +57,108 @@ Ext.onReady(function(){
     * container and <object, img, iframe> bleed-thru.
     */
 
-    
     CSS.createStyleSheet('.x-hide-nosize, .x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;}');
     CSS.refreshCache();
     
 });
 
+(function(){
+
+      var El = Ext.Element, A = Ext.lib.Anim;
+      
+      /**
+  	   * Visibility mode constant - Use a static className to hide element
+	   * @static
+	   * @type Number
+	   */
+      
+      El.NOSIZE = 3;
+      
+      /**
+       * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
+       * @static
+       * @type String
+       * @default 'x-hide-nosize'
+       */
+      El.visibilityCls = 'x-hide-nosize';
+      
+      Ext.override(El, {
+                  
+          setVisible : function(visible, animate){
+
+            if(!animate || !A){
+                if(this.visibilityMode === El.DISPLAY){
+                    this.setDisplayed(visible);
+                }else if(this.visibilityMode === El.VISIBILITY){
+                    this.fixDisplay();
+                    this.dom.style.visibility = visible ? "visible" : "hidden";
+                }else {
+                    this[visible?'removeClass':'addClass'](this.visibilityCls || El.visibilityCls);
+                }
+
+            }else{
+                // closure for composites
+                var dom = this.dom;
+                var visMode = this.visibilityMode;
+
+                if(visible){
+                    this.setOpacity(.01);
+                    this.setVisible(true);
+                }
+                this.anim({opacity: { to: (visible?1:0) }},
+                      this.preanim(arguments, 1),
+                      null, .35, 'easeIn', function(){
+                         if(!visible){
+                             if(visMode === El.DISPLAY){
+                                 dom.style.display = "none";
+                             }else if(visMode === El.VISIBILITY){
+                                 dom.style.visibility = "hidden";
+                             }else {
+                                 Ext.get(dom).addClass(El.visibilityCls);
+                             }
+                             Ext.get(dom).setOpacity(1);
+                         }
+                     });
+            }
+            return this;
+        },
+
+        /**
+         * Checks whether the element is currently visible using both visibility, display, and nosize class properties.
+         * @param {Boolean} deep (optional) True to walk the dom and see if parent elements are hidden (defaults to false)
+         * @return {Boolean} True if the element is currently visible, else false
+         */
+        isVisible : function(deep) {
+            var vis = !( this.getStyle("visibility") === "hidden" || 
+                         this.getStyle("display") === "none" || 
+                         this.hasClass(this.visibilityCls || El.visibilityCls));
+            if(deep !== true || !vis){
+                return vis;
+            }
+            var p = this.dom.parentNode;
+            while(p && p.tagName.toLowerCase() !== "body"){
+                if(!Ext.fly(p, '_isVisible').isVisible()){
+                    return false;
+                }
+                p = p.parentNode;
+            }
+            return true;
+        }
+    });
+    
+})();
 
 Ext.ux.plugin.VisibilityMode = function(opt) {
 
     Ext.apply(this, opt||{});
-
     
-
-    //Apply the necessary overrides to Ext.Element once.
-    if(!Ext.Element.prototype.setVisible.patched){
-
-          Ext.override(Ext.Element, {
-              setVisible : function(visible, animate){
-
-                if(!animate || !Ext.lib.Anim){
-                    if(this.visibilityMode === Ext.Element.DISPLAY){
-                        this.setDisplayed(visible);
-                    }else if(this.visibilityMode === Ext.Element.VISIBILITY){
-                        this.fixDisplay();
-                        this.dom.style.visibility = visible ? "visible" : "hidden";
-                    }else {
-                        this[visible?'removeClass':'addClass'](String(this.visibilityMode));
-                    }
-
-                }else{
-                    // closure for composites
-                    var dom = this.dom;
-                    var visMode = this.visibilityMode;
-
-                    if(visible){
-                        this.setOpacity(.01);
-                        this.setVisible(true);
-                    }
-                    this.anim({opacity: { to: (visible?1:0) }},
-                          this.preanim(arguments, 1),
-                          null, .35, 'easeIn', function(){
-
-                             if(!visible){
-                                 if(visMode === Ext.Element.DISPLAY){
-                                     dom.style.display = "none";
-                                 }else if(visMode === Ext.Element.VISIBILITY){
-                                     dom.style.visibility = "hidden";
-                                 }else {
-                                     Ext.get(dom).addClass(String(visMode));
-                                 }
-                                 Ext.get(dom).setOpacity(1);
-                             }
-                         });
-                }
-
-                return this;
-            },
-
-            /**
-             * Checks whether the element is currently visible using both visibility and display properties.
-             * @param {Boolean} deep (optional) True to walk the dom and see if parent elements are hidden (defaults to false)
-             * @return {Boolean} True if the element is currently visible, else false
-             */
-            isVisible : function(deep) {
-                var vis = !( this.getStyle("visibility") === "hidden" || this.getStyle("display") === "none" || this.hasClass(this.visibilityMode));
-                if(deep !== true || !vis){
-                    return vis;
-                }
-                var p = this.dom.parentNode;
-                while(p && p.tagName.toLowerCase() !== "body"){
-                    if(!Ext.fly(p, '_isVisible').isVisible()){
-                        return false;
-                    }
-                    p = p.parentNode;
-                }
-                return true;
-            }
-        });
-        Ext.Element.prototype.setVisible.patched = true;
-    }
    };
 
 
-  Ext.ux.plugin.VisibilityMode.prototype = {
-
+  Ext.extend(Ext.ux.plugin.VisibilityMode , Object, {
 
        /**
-        * @cfg {Boolean} bubble If true, the VisibilityMode fixes are also applied to parent Containers which may also impact DOM reflow problems.
+        * @cfg {Boolean} bubble If true, the VisibilityMode fixes are also applied to parent Containers which may also impact DOM reflow.
         * @default true
         */
       bubble              :  true,
@@ -179,7 +202,7 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
         var El = Ext.Element;
 
         var hideMode = this.hideMode || c.hideMode;
-        var visMode = c.visibilityCls || this.visibilityCls || El[hideMode.toUpperCase()] || El.VISIBILITY;
+        var visMode = El[hideMode.toUpperCase()] || El.VISIBILITY;
         var plugin = this;
 
         var changeVis = function(){
@@ -187,26 +210,22 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
             var els = [this.collapseEl, this.floating? null: this.actionMode ].concat(plugin.elements||[]);
 
             Ext.each(els, function(el){
-            var e = el ? this[el] : el;
-            if(e && e.setVisibilityMode){
-                e.setVisibilityMode(visMode);
-            }
+	            var e = el ? this[el] : el;
+	            e && e.setVisibilityMode && e.setVisibilityMode(visMode);
             },this);
 
             var cfg = {
-            animCollapse : false,
-            hideMode  : hideMode,
-            animFloat : false,
-            visibilityCls  : visMode,
-            defaults  : this.defaults || {}
+	            animCollapse : false,
+	            hideMode  : hideMode,
+	            animFloat : false,
+	            defaults  : this.defaults || {}
             };
 
             cfg.defaults.hideMode = hideMode;
-            cfg.defaults.visibilityCls = visMode;
-
+            
             Ext.apply(this, cfg);
             Ext.apply(this.initialConfig || {}, cfg);
-
+            
          };
 
          var bubble = Ext.Container.prototype.bubble;
@@ -238,5 +257,5 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
 
      }
 
-  };
+  });
 
