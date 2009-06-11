@@ -57,14 +57,18 @@ Ext.onReady(function(){
     * container and <object, img, iframe> bleed-thru.
     */
 
-    CSS.createStyleSheet('.x-hide-nosize, .x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;}');
+    CSS.createStyleSheet('.x-hide-nosize, .x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
     CSS.refreshCache();
     
 });
 
 (function(){
 
-      var El = Ext.Element, A = Ext.lib.Anim;
+      var El = Ext.Element, A = Ext.lib.Anim,
+      ORIGINALDISPLAY = 'originalDisplay',
+      VISMODE = 'visibilityMode',
+      ELDISPLAY = El.DISPLAY,
+      data = El.data; // > Ext 3 RC2 only
       
       /**
   	   * Visibility mode constant - Use a static className to hide element
@@ -73,6 +77,8 @@ Ext.onReady(function(){
 	   */
       
       El.NOSIZE = 3;
+      
+      
       
       /**
        * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
@@ -83,30 +89,45 @@ Ext.onReady(function(){
       El.visibilityCls = 'x-hide-nosize';
       
       Ext.override(El, {
+        
+	     /**
+	      * Gets the element's visibility mode. 
+	      * @return {Number} Ext.Element[VISIBILITY, DISPLAY, NOSIZE]
+          */
+	      getVisibilityMode :  function(){  
+                
+	            var dom = this.dom, 
+                    mode = Ext.isFunction(data) ? data(dom,VISMODE) : this[VISMODE];
+                if(mode === undefined){
+                   mode = 1;
+                   Ext.isFunction(data) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+                }
+                return mode;
+           },
                   
           setVisible : function(visible, animate){
-
+            var me = this,
+                dom = me.dom,
+                visMode = me.getVisibilityMode();
+                
             if(!animate || !A){
-                if(this.visibilityMode === El.DISPLAY){
-                    this.setDisplayed(visible);
-                }else if(this.visibilityMode === El.VISIBILITY){
-                    this.fixDisplay();
-                    this.dom.style.visibility = visible ? "visible" : "hidden";
+                if(visMode === El.DISPLAY){
+                    me.setDisplayed(visible);
+                }else if(visMode === El.VISIBILITY){
+                    me.fixDisplay();
+                    dom.style.visibility = visible ? "visible" : "hidden";
                 }else {
-                    this[visible?'removeClass':'addClass'](this.visibilityCls || El.visibilityCls);
+                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
                 }
 
             }else{
-                // closure for composites
-                var dom = this.dom;
-                var visMode = this.visibilityMode;
-
+               
                 if(visible){
-                    this.setOpacity(.01);
-                    this.setVisible(true);
+                    me.setOpacity(.01);
+                    me.setVisible(true);
                 }
-                this.anim({opacity: { to: (visible?1:0) }},
-                      this.preanim(arguments, 1),
+                me.anim({opacity: { to: (visible?1:0) }},
+                      me.preanim(arguments, 1),
                       null, .35, 'easeIn', function(){
                          if(!visible){
                              if(visMode === El.DISPLAY){
@@ -114,13 +135,13 @@ Ext.onReady(function(){
                              }else if(visMode === El.VISIBILITY){
                                  dom.style.visibility = "hidden";
                              }else {
-                                 Ext.get(dom).addClass(El.visibilityCls);
+                                 me.addClass(me.visibilityCls || El.visibilityCls);
                              }
-                             Ext.get(dom).setOpacity(1);
+                             me.setOpacity(1);
                          }
                      });
             }
-            return this;
+            return me;
         },
 
         /**
@@ -132,17 +153,18 @@ Ext.onReady(function(){
             var vis = !( this.getStyle("visibility") === "hidden" || 
                          this.getStyle("display") === "none" || 
                          this.hasClass(this.visibilityCls || El.visibilityCls));
-            if(deep !== true || !vis){
-                return vis;
+            if(deep && vis){
+	            var p = this.dom.parentNode;
+	            while(p && p.tagName.toLowerCase() !== "body"){
+	                if(!Ext.fly(p, '_isVisible').isVisible()){
+	                    vis = false;
+	                    break;
+	                }
+	                p = p.parentNode;
+	            }
+                delete El._flyweights['_isVisible']; //orphan reference cleanup
             }
-            var p = this.dom.parentNode;
-            while(p && p.tagName.toLowerCase() !== "body"){
-                if(!Ext.fly(p, '_isVisible').isVisible()){
-                    return false;
-                }
-                p = p.parentNode;
-            }
-            return true;
+            return vis;
         }
     });
     
@@ -207,11 +229,18 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
 
         var changeVis = function(){
 
-            var els = [this.collapseEl, this.floating? null: this.actionMode ].concat(plugin.elements||[]);
+            var els = [this.collapseEl, 
+                      //ignore floating Layers, otherwise the el. 
+                      this.floating? null: this.actionMode
+                      ].concat(plugin.elements||[]);
 
             Ext.each(els, function(el){
 	            var e = el ? this[el] : el;
-	            e && e.setVisibilityMode && e.setVisibilityMode(visMode);
+	            if(e){ 
+                 e.setVisibilityMode(visMode);
+                 e.visibilityCls = plugin.visibilityCls;
+                }
+                   
             },this);
 
             var cfg = {
@@ -241,7 +270,7 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
 
                bubble.call(this.ownerCt, function(){
 
-               if(this.hideMode !== hideMode){
+               if(this.hideMode !== hideMode){ //already applied?
                   this.hideMode = hideMode ;
 
                   this.on('afterlayout', changeVis, this, {single:true} );
