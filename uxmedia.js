@@ -79,26 +79,6 @@
 
 */
 
-Ext.removeNode =  Ext.isIE ? function(n){
-            var d = document.createElement('div'); //the original closure held a reference till reload as well.
-            if(n && n.tagName != 'BODY'){
-                    var d = document.createElement('div');
-                    d.appendChild(n);
-                    //d.innerHTML = '';  //either works equally well
-                    d.removeChild(n);
-                    delete Ext.Element.cache[n.id];  //clear out any Ext reference from the Elcache
-                    d = null;  //just dump the scratch DIV reference here.
-            }
-
-        } :
-        function(n){
-            if(n && n.parentNode && n.tagName != 'BODY'){
-                n.parentNode.removeChild(n);
-                delete Ext.Element.cache[n.id];
-            }
-        };
-
-
 (function(){
 
     //remove null and undefined members from an object
@@ -109,7 +89,13 @@ Ext.removeNode =  Ext.isIE ? function(n){
             }
             return out;
         };
-
+        
+    /**
+     * plugin detection namespace for VisibilityMode fixes
+     */
+    Ext.ns('Ext.ux.plugin');
+    
+    
    /**
     *
     * @class Ext.ux.Media
@@ -129,12 +115,15 @@ Ext.removeNode =  Ext.isIE ? function(n){
          this.initMedia();
     };
     var ux = Ext.ux.Media;
+    
+    
     var stateRE = /4$/i;
 
     if(parseFloat(Ext.version) < 2.1){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
     Ext.ux.Media.prototype = {
-
+        
+         hasVisModeFix : !!Ext.ux.plugin.VisibilityMode, 
          /**
          * @property {Object} mediaObject An {@link Ext.ux.Media.Element} reference to rendered DOM Element.
          */
@@ -219,7 +208,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
                 var u = parts[0];
                 if( !(/_dc=/i).test(u) ){
                     var append = "_dc=" + (new Date().getTime());
-                    if(u.indexOf("&") !== -1){
+                    if(u.indexOf("?") !== -1){
                         u += "&" + append;
                     }else{
                         u += "?" + append;
@@ -550,8 +539,6 @@ Ext.removeNode =  Ext.isIE ? function(n){
          autoMask   : false
     };
 
-    Ext.ns('Ext.ux.plugin');
-
     var componentAdapter = {
 
         init         : function(){
@@ -562,14 +549,15 @@ Ext.removeNode =  Ext.isIE ? function(n){
 
             this.html = this.contentEl = this.items = null;
 
-            //Attach the Visibility Fix (if available) to the current class Component
-            if(this.hideMode == 'nosize' && Ext.ux.plugin.VisibilityMode){
-
-               new Ext.ux.plugin.VisibilityMode({
-                 visibilityCls   : 'x-hide-nosize',
-                 hideMode        : 'nosize'
-                }).init(this);
-            }
+            //Attach the Visibility Fix (if available) to the current instance
+            if(this.hideMode == 'nosize'){
+                
+               this.hasVisModeFix ? new Ext.ux.plugin.VisibilityMode({
+                 visibilityCls   : 'x-hide-nosize'
+                }).init(this) :
+                //default to 'display' of the plugin is not available
+                (this.hideMode = 'display');
+            } 
 
             this.initMedia();
 
@@ -905,8 +893,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
             }
 
             if(this._mask ) {
-
-                 this._mask.setDisplayed(false)//.addClass("x-hide-offsets");
+                 this._mask.setDisplayed(false);
                  if(remove){
                      this._mask.remove(true);
                      delete this._mask;
@@ -924,13 +911,12 @@ Ext.removeNode =  Ext.isIE ? function(n){
           */
 
         remove : function(cleanse, deep){
+              this.unmask(true);
               if(this.dom){
                 this.removeAllListeners();    //remove any Ext-defined DOM listeners
                 if(cleanse){ this.cleanse(true, deep); }
                 Ext.removeNode(this.dom);
-                this.maskEl = null;
                 this.dom = null;  //clear ANY DOM references
-
               }
          },
 
@@ -956,6 +942,7 @@ Ext.removeNode =  Ext.isIE ? function(n){
                  Ext.removeNode(n);
                  n = nx;
              }
+             delete Ext.Element._flyweights['_cleanser']; //orphan reference cleanup
              this.isCleansed = true;
              return this;
          }
@@ -1601,8 +1588,8 @@ Ext.ux.Media.mediaTypes =
         SILVERLIGHT2 : {
               tag      : 'object'
              ,cls      : 'x-media x-media-silverlight'
-             ,type      :"application/x-silverlight-2-b2"
-             ,data     : "data:application/x-silverlight-2-b2,"
+             ,type      :"application/x-silverlight-2"
+             ,data     : "data:application/x-silverlight,"
              ,params  : { MinRuntimeVersion: "2.0" }
              ,unsupportedText: '<a href="http://go2.microsoft.com/fwlink/?LinkID=114576&v=2.0"><img style="border-width: 0pt;" alt="Get Microsoft Silverlight" src="http://go2.microsoft.com/fwlink/?LinkID=108181"/></a>'
         },
