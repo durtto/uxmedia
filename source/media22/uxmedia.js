@@ -911,8 +911,8 @@
           */
 
         remove : function(cleanse, deep){
-              this.unmask(true);
               if(this.dom){
+                this.unmask(true);
                 this.removeAllListeners();    //remove any Ext-defined DOM listeners
                 if(cleanse){ this.cleanse(true, deep); }
                 Ext.removeNode(this.dom);
