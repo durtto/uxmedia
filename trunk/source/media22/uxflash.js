@@ -98,6 +98,7 @@
              ,cls      : 'x-media x-media-swf'
              ,type     : 'application/x-shockwave-flash'
              ,loop     : null
+             ,style   : {'z-index':0}
              ,scripting: "sameDomain"
              ,start    : true
              ,unsupportedText : {cn:['The Adobe Flash Player{0}is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]}
@@ -600,11 +601,6 @@
 
     var componentAdapter = {
        init         : function(){
-
-          //Must do this or Flash ExternalInterface methods are disabled!
-          this.hideMode    = 'nosize';
-
-          this.visibilityCls = 'x-hide-nosize';
 
           this.getId = function(){
               return this.id || (this.id = "flash-comp" + (++Ext.Component.AUTO_ID));
