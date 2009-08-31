@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<project path="" name="ux.Media" author="Active Group, Inc" version="2.1" copyright="ux.Media $version&#xD;&#xA;Copyright(c) 2007-2009, $author.&#xD;&#xA;licensing@theactivegroup.com&#xD;&#xA;&#xD;&#xA;http://licensing.theactivegroup.com&#xD;&#xA;&#xD;&#xA;" output="D:\Webdev\DF\uxMedia\trunk\source\media22\build\" source="False" source-dir="$output\source" minify="False" min-dir="$output\build" doc="False" doc-dir="$output\docs" master="true" master-file="$output\yui-ext.js" zip="true" zip-file="$output\yuo-ext.$version.zip">
+<project path="" name="ux.Media" author="Active Group, Inc" version="2.1.1" copyright="ux.Media $version&#xD;&#xA;Copyright(c) 2007-2009, $author.&#xD;&#xA;licensing@theactivegroup.com&#xD;&#xA;&#xD;&#xA;http://licensing.theactivegroup.com&#xD;&#xA;&#xD;&#xA;" output="D:\Webdev\DF\uxMedia\trunk\source\media22\build\" source="False" source-dir="$output\source" minify="False" min-dir="$output\build" doc="False" doc-dir="$output\docs" master="true" master-file="$output\yui-ext.js" zip="true" zip-file="$output\yuo-ext.$version.zip">
   <directory name="" />
   <file name="uxvismode.js" path="" />
   <file name="uxmedia.js" path="" />
