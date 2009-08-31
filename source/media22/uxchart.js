@@ -410,11 +410,13 @@
 
        /** @private */
        onChartRendered   :  function(){
+        
              this.fireEvent('chartrender', this, this.getInterface());
              if(this.loadMask && this.autoMask){this.loadMask.hide();}
        },
        /** @private */
        onChartLoaded   :  function(){
+        
             this.fireEvent('chartload', this, this.getInterface());
             if(this.loadMask && this.autoMask){this.loadMask.hide();}
        },
@@ -453,7 +455,9 @@
 
     /** @private  Class method callbacks */
     chart.FlashAdapter.chartOnRender = function(DOMId){
+         
         var c, d = Ext.get(DOMId);
+        
         if(d && (c = d.ownerCt)){
             c.onChartRendered.defer(1, c);
             c = d = null;

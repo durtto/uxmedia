@@ -38,7 +38,7 @@
 
    chartUrl    : the URL of the desired Fusion_Chart_Object.swf
    dataXML     : String  XML stream containing chart layout config and data series.
-   dataUrl     : the URL of a remote dataXML resource
+   dataURL     : the URL of a remote dataXML resource
    loadMask    : loadMask config, true, or false. applied during data load operations.
    mediaMask   : loadMask config, true, or false. applied while the SWF object is loading( not the data)
 
@@ -310,6 +310,8 @@
       setChartData : function(xml, immediate){
            var o;
            this.chartData = xml;
+           this.dataURL = null;
+           
            if( immediate !== false && (o = this.getInterface())){
 
               if( 'setDataXML' in o ){
@@ -323,10 +325,9 @@
                     //Set the actual data
                    this.setVariable("_root.newData",xml);
                    //Go to the required frame
-                   if(o.TGotoLabel !== undefined){
+                   if('TGotoLabel' in o){
                        o.TGotoLabel("/", "JavaScriptHandler");
                    }
-
               }
            }
            o = null;
@@ -345,9 +346,8 @@
 
           this.dataURL = url;
           if((o = this.getInterface()) && immediate !== false){
-
               'setDataURL' in o ?
-                o.setDataURL(url) :
+                 o.setDataURL(url) :
                    //FusionCharts Free has no support for dynamic loading of URLs
                    this.load({url:url,nocache:this.disableCaching} );
               o=null;
@@ -375,7 +375,7 @@
      * The following callbacks-to-events are only supported by Fusion Charts 3.1 or higher.
      */
     var dispatchEvent = function(name, id){
-
+        
         var c, d = Ext.get(id);
         if(d && (c = d.ownerCt)){
            c.fireEvent.apply(c, [name, c, c.getInterface()].concat(Array.prototype.slice.call(arguments,2)));

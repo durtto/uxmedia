@@ -860,7 +860,7 @@
              }
 
              //may have been hidden previously (and not removed)
-             this._mask.setDisplayed(true)//.removeClass("x-hide-offsets");
+             this._mask.setDisplayed(true);
 
              if(typeof msg == 'string'){
                   this._maskMsg || (this._maskMsg = Ext.DomHelper.append(this.dom, {style:"visibility:hidden",cls:"ext-el-mask-msg", cn:{tag:'div'}}, true));
