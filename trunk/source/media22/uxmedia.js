@@ -813,7 +813,242 @@
 
     Ext.reg('mediawindow', ux.Window);
 
+    Ext.ns('Ext.capabilities');
+    Ext.ns('Ext.ux.Media.plugin');
+    /**
+     * Check Basic HTML5 Element support for the <audio> tag and/or Audio object.
+     */
+    var CAPS = (Ext.capabilities.hasAudio || 
+       (Ext.capabilities.hasAudio = function(){
+                
+                var aTag = !!document.createElement('audio').canPlayType,
+                    aAudio = window.Audio ? new Audio('') : {},
+                    caps = aTag || !!aAudio.canPlayType ? { tag : aTag, object : !!aAudio.play} : false,
+                    mime,
+                    chk,
+                    mimes = {
+                            mp3 : 'audio/mpeg', //mp3
+                            ogg : 'audio/ogg',  //Ogg Vorbis
+                            wav : 'audio/x-wav', //wav 
+                            basic : 'audio/basic', //au, snd
+                            aif  : 'audio/x-aiff' //aif, aifc, aiff
+                        };
+                    
+                    if(caps && aAudio.canPlayType){
+                       for (chk in mimes){ 
+                            caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
+                        }
+                    }                      
+                    return caps;
+            }()));
+            
+     Ext.iterate || Ext.apply (Ext, {
+     
+        iterate : function(obj, fn, scope){
+            if(Ext.isEmpty(obj)){
+                return;
+            }
+            if(Ext.isIterable(obj)){
+                Ext.each(obj, fn, scope);
+                return;
+            }else if(Ext.isObject(obj)){
+                for(var prop in obj){
+                    if(obj.hasOwnProperty(prop)){
+                        if(fn.call(scope || obj, prop, obj[prop]) === false){
+                            return;
+                        };
+                    }
+                }
+            }
+        },
+        isIterable : function(v){
+            //check for array or arguments
+            if(Ext.isArray(v) || v.callee){
+                return true;
+            }
+            //check for node list type
+            if(/NodeList|HTMLCollection/.test(toString.call(v))){
+                return true;
+            }
+            //NodeList has an item and length property
+            //IXMLDOMNodeList has nextNode method, needs to be checked first.
+            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
+        },
+        
+        isObject : function(v){
+            return v && typeof v == "object";
+        }
+     });
+    
+     /**
+     * @class Ext.ux.Media.plugin.AudioEvents
+     * @extends Ext.ux.Media.Component
+     * @version 1.0
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
+    Ext.ux.Media.plugin.AudioEvents = Ext.extend(Ext.ux.Media.Component,{
+    
+       autoEl  : {tag:'div', cls: 'x-hide-offsets'},
+       
+       disableCaching : false,
+       
+       /**
+        * @cfg {Object} audioEvents An object hash mapping URL of audio resources to
+        * DOM Ext.Element or Ext.util.Observable events.
+        * @example
+        *  
+        */
+       audioEvents : {},
+       
+       /**
+        * @cfg {Float} volume Desired Volume level in the range (0.0 - 1)
+        * 
+        */
+       volume     : .5,
+       
+       ptype      : 'audioevents',
+       
+       /** @private
+        * 
+        */
+       initComponent : function(){
+          this.mediaCfg || (this.mediaCfg = {
+              mediaType : 'WAV',
+              start     : true,
+              url       : ''
+          });
+          Ext.ux.Media.plugin.AudioEvents.superclass.initComponent.apply(this,arguments);
+          
+          this.addEvents(
+          /**
+            * Fires immediately preceeding an Audio Event. Returning false within this handler
+            * cancels the audio playback.
+            * @event beforeaudio
+            * @memberOf Ext.ux.Media.plugin.AudioEvents
+            * @param {Object} plugin This Media plugin instance.
+            * @param {Ext.Component/Ext.Element} target The target Ext.Component or Ext.Element instance.
+            * @param {String} eventName The eventName linked to the Audio stream.
+           */
+           'beforeaudio');
+           
+           this.setVolume(this.volume);
+       },
+       
+       /** @private
+        * 
+        */
+       init : function( target ){
+        
+            this.rendered || this.render(Ext.getBody());
+            
+            if(target.dom || target.ctype){
+                var plugin = this;
+                Ext.iterate(this.audioEvents || {}, 
+                 function(event){
+                   /* if the plugin init-target is an Observable, 
+                    * assert the eventName, exiting if not defined
+                    */
+                    if(target.events && !target.events[event]) return;
+                    
+                    /**
+                     * Mixin Audio Management methods to the target
+                     */
+                    Ext.applyIf(target, {
+                       audioPlugin : plugin,
+                       audioListeners : {},
+                       /**
+                        * @method removeAudioListener 
+                        * 
+                        */
+                       removeAudioListener : function(audioEvent){
+                          if(audioEvent && this.audioListeners[audioEvent]){ 
+                               this.un(audioEvent, this.audioListeners[audioEvent], this);
+                               delete this.audioListeners[audioEvent];
+                          }
+                       },
+                       /**
+                        * Removes all Audio Listeners from the Element or Component
+                        * @method removeAudioListeners
+                        */
+                       removeAudioListeners : function(){
+                          var c = [];
+                          Ext.iterate(this.audioListeners, function(audioEvent){c.push(audioEvent)});
+                          Ext.iterate(c, this.removeAudioListener, this);
+                       },
+                       
+                       addAudioListener : function(audioEvent){
+                           if(this.audioListeners[audioEvent]){
+                               this.removeAudioListener(audioEvent);
+                           }
+                           
+                           this.on(audioEvent, 
+                               this.audioListeners[audioEvent] = function(){
+                               this.audioPlugin.onEvent(this, audioEvent);
+                             }, this);
+                        
+                       } ,
 
+                       enableAudio : function(){
+                          this.audioPlugin && this.audioPlugin.enable();
+                       },
+                       
+                       disableAudio : function(){
+                          this.audioPlugin && this.audioPlugin.disable();
+                       },
+                       
+                       setVolume : function(volume){
+                          this.audioPlugin && this.audioPlugin.setVolume(volume);
+                       }
+                    });
+                    
+                    target.addAudioListener(event);
+                    
+                },this);
+            }
+       },
+       
+       /**
+        * @param {Float} volume The volume (range 0-1)
+        * @return {Object} this
+        */
+       setVolume   : function(volume){
+            var AO = this.audioObject, v = Math.max(Math.min(parseFloat(volume)||0, 1),0);
+            this.mediaCfg && (this.mediaCfg.volume = v*100);
+            this.volume = v;
+            AO && (AO.volume = v);
+            return this;
+       },
+       
+       /**
+        * @private
+        */
+       onEvent : function(comp, event){
+           if(!this.disabled && this.audioEvents && this.audioEvents[event]){
+              if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
+                  this.mediaCfg.url = this.audioEvents[event];
+                  
+                  if(CAPS.object){  //HTML5 Audio support?
+                        this.audioObject && this.audioObject.stop && this.audioObject.stop();
+                        if(this.audioObject = new Audio(this.mediaCfg.url || '')){
+                            this.setVolume(this.volume);
+                            this.audioObject.play && this.audioObject.play();
+                        }
+                  } else {
+                        this.refreshMedia();
+                  }
+              }
+              
+           }
+       }
+    
+    });
+    
+    Ext.preg && Ext.preg('audioevents', Ext.ux.Media.plugin.AudioEvents);
 
     Ext.onReady(function(){
         //Generate CSS Rules if not defined in markup
@@ -863,17 +1098,19 @@
              this._mask.setDisplayed(true);
 
              if(typeof msg == 'string'){
-                  this._maskMsg || (this._maskMsg = Ext.DomHelper.append(this.dom, {style:"visibility:hidden",cls:"ext-el-mask-msg", cn:{tag:'div'}}, true));
-                  var mm = this._maskMsg;
-                  mm.dom.className = msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg";
-                  mm.dom.firstChild.innerHTML = msg;
-                  mm.center(this).setVisible(true);
+                  this._maskMsg || 
+                    (this._maskMsg = Ext.DomHelper.append(this.dom, {
+                        style:"visibility:hidden",
+                        cls: msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg", 
+                        cn:{tag:'div', html: msg}
+                        }, true));
+                  
+                  this._maskMsg.center(this).setVisible(true);
              }
 
              //Adjust Mask Height for IE strict
              if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
-                  //see: http://www.extjs.com/forum/showthread.php?p=252925#post252925
-                  this._mask.setHeight(this.getHeight());
+                  this._mask.setSize(undefined, this.getHeight());
              }
              return this._mask;
          },
@@ -886,7 +1123,7 @@
             if(this._maskMsg ){
 
                 this._maskMsg.setVisible(false);
-                if(remove){
+                if(remove !== false){
                     this._maskMsg.remove(true);
                     delete this._maskMsg;
                  }
@@ -894,7 +1131,7 @@
 
             if(this._mask ) {
                  this._mask.setDisplayed(false);
-                 if(remove){
+                 if(remove !== false){
                      this._mask.remove(true);
                      delete this._mask;
                  }
@@ -960,7 +1197,7 @@
      */
     Ext.ux.Media.Element = Ext.extend ( Ext.Element , {
 
-        visibilityMode  : 'x-hide-nosize',
+        visibilityCls  : 'x-hide-nosize',
         /**
         * @private
         */
@@ -1175,8 +1412,40 @@
 /**
  * @namespace Ext.ux.Media.mediaTypes
  */
-Ext.ux.Media.mediaTypes =
-     {
+Ext.ux.Media.mediaTypes = {
+
+     /**
+     * @namespace Ext.ux.Media.mediaTypes.WAV
+     * @desc Generic WAV
+     */
+       
+      WAV : 
+            Ext.apply(
+            { tag      : 'object'
+             ,cls      : 'x-media x-media-wav'
+             ,data      : "@url"
+             ,type     : 'audio/x-wav'
+             ,loop  : false
+             ,params  : {
+
+                  filename     : "@url"
+                 ,displaysize  : 0
+                 ,autostart    : '@start'
+                 ,showControls : '@controls'
+                 ,showStatusBar:  false
+                 ,showaudiocontrols : '@controls'
+                 ,stretchToFit  : false
+                 ,Volume        : "@volume"
+                 ,PlayCount     : 1
+
+               }
+           },Ext.isIE?{
+               classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
+               ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+               ,type:'application/x-oleobject'
+               }:
+               {src:"@url"}),
+    
         /**
          * @namespace Ext.ux.Media.mediaTypes.PDF
          */
@@ -1244,7 +1513,6 @@ Ext.ux.Media.mediaTypes =
                  IsRemote:false</code></pre>
         */
 
-
       WMV : Ext.apply(
               {tag      :'object'
               ,cls      : 'x-media x-media-wmv'
@@ -1269,13 +1537,38 @@ Ext.ux.Media.mediaTypes =
                    ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
                    ,type:'application/x-oleobject'
                    }:
-                   {src:"@url"}),
+               {src:"@url"}
+             ),
+       /**
+       * @namespace Ext.ux.Media.mediaTypes.APPLET
+       */            
+       APPLET  : {
+                  tag      :'object'
+                 ,cls      : 'x-media x-media-applet'
+                 ,type     : 'application/x-java-applet'
+                 ,unsupportedText : {tag : 'p', html:'Java is not installed/enabled.'}
+                 ,params : {
+                   url : '@url',
+                   archive : '',  //the jar file
+                   code    : '' //the Java class
+                  }
+       },
+       
+       "AUDIO-OGG"   : {
+           tag      : 'audio',
+           controls : '@controls',
+           src      : '@url'
+       },
+       
+       "VIDEO-OGG"   : {
+           tag      : 'video',
+           controls : '@controls',
+           src      : '@url'
+       },
 
      /**
        * @namespace Ext.ux.Media.mediaTypes.SWF
        */
-
-
        SWF   :  Ext.apply({
                   tag      :'object'
                  ,cls      : 'x-media x-media-swf'
@@ -1609,7 +1902,7 @@ Ext.ux.Media.mediaTypes =
          * @namespace Ext.ux.Media.mediaTypes.OWCXLS
          */
 
-        "OWCXLS" : Ext.apply({     //experimental IE only
+        OWCXLS : Ext.apply({     //experimental IE only
               tag      : 'object'
              ,cls      : 'x-media x-media-xls'
              ,type      :"application/vnd.ms-excel"
@@ -1631,7 +1924,7 @@ Ext.ux.Media.mediaTypes =
          * @namespace Ext.ux.Media.mediaTypes.OWCCHART
          */
 
-        "OWCCHART" : Ext.apply({     //experimental
+        OWCCHART : Ext.apply({     //experimental
               tag      : 'object'
              ,cls      : 'x-media x-media-xls'
              ,type      :"application/vnd.ms-excel"
