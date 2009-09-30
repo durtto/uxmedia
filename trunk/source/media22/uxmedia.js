@@ -893,7 +893,9 @@
      */
     Ext.ux.Media.plugin.AudioEvents = Ext.extend(Ext.ux.Media.Component,{
     
-       autoEl  : {tag:'div', cls: 'x-hide-offsets'},
+       autoEl  : {tag:'div' },
+       
+       cls: 'x-hide-offsets',
        
        disableCaching : false,
        
@@ -1031,7 +1033,7 @@
            if(!this.disabled && this.audioEvents && this.audioEvents[event]){
               if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
                   this.mediaCfg.url = this.audioEvents[event];
-                  
+
                   if(CAPS.object){  //HTML5 Audio support?
                         this.audioObject && this.audioObject.stop && this.audioObject.stop();
                         if(this.audioObject = new Audio(this.mediaCfg.url || '')){
@@ -1039,7 +1041,17 @@
                             this.audioObject.play && this.audioObject.play();
                         }
                   } else {
-                        this.refreshMedia();
+                        var O = this.getInterface();
+                        if(O){ 
+                            if('object' in O){  //IE ActiveX
+                                O= O.object;
+	                            ('Open' in O) && O.Open(this.mediaCfg.url || '');
+	                            ('Play' in O) && O.Play();
+                            }else {  //All Others - just rerender the tag
+                                this.refreshMedia();      
+                            }
+                            
+                        }
                   }
               }
               
@@ -1441,7 +1453,7 @@ Ext.ux.Media.mediaTypes = {
                }
            },Ext.isIE?{
                classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
-               ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+               ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
                ,type:'application/x-oleobject'
                }:
                {src:"@url"}),
@@ -1534,7 +1546,7 @@ Ext.ux.Media.mediaTypes = {
                }
                },Ext.isIE?{
                    classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
-                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
                    ,type:'application/x-oleobject'
                    }:
                {src:"@url"}
@@ -1886,76 +1898,7 @@ Ext.ux.Media.mediaTypes = {
              ,params  : { MinRuntimeVersion: "2.0" }
              ,unsupportedText: '<a href="http://go2.microsoft.com/fwlink/?LinkID=114576&v=2.0"><img style="border-width: 0pt;" alt="Get Microsoft Silverlight" src="http://go2.microsoft.com/fwlink/?LinkID=108181"/></a>'
         },
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.DATAVIEW
-         */
-
-        DATAVIEW : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-dataview'
-             ,classid  : 'CLSID:0ECD9B64-23AA-11D0-B351-00A0C9055D8E'
-             ,type     : 'application/x-oleobject'
-             ,unsupportedText: 'MS Dataview Control is not installed'
-
-        },
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.OWCXLS
-         */
-
-        OWCXLS : Ext.apply({     //experimental IE only
-              tag      : 'object'
-             ,cls      : 'x-media x-media-xls'
-             ,type      :"application/vnd.ms-excel"
-             ,controltype: "excel"
-             ,params  : { DataType : "CSVURL"
-                        ,CSVURL : '@url'
-                        ,DisplayTitleBar : true
-                        ,AutoFit         : true
-                     }
-             },Ext.isIE?{
-                   codebase: "file:msowc.cab"
-                  ,classid :"CLSID:0002E510-0000-0000-C000-000000000046" //owc9
-                 //classid :"CLSID:0002E550-0000-0000-C000-000000000046" //owc10
-                 //classid :"CLSID:0002E559-0000-0000-C000-000000000046" //owc11
-
-                 }:false),
-
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.OWCCHART
-         */
-
-        OWCCHART : Ext.apply({     //experimental
-              tag      : 'object'
-             ,cls      : 'x-media x-media-xls'
-             ,type      :"application/vnd.ms-excel"
-             ,data     : "@url"
-             ,params  : { DataType : "CSVURL" }
-             },Ext.isIE?{
-                    classid :"CLSID:0002E500-0000-0000-C000-000000000046" //owc9
-                  //classid :"CLSID:0002E556-0000-0000-C000-000000000046" //owc10
-                  //classid :"CLSID:0002E55D-0000-0000-C000-000000000046" //owc11
-                 }:false),
-
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.OFFICE
-         */
-
-        OFFICE : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-office'
-             ,type      :"application/x-msoffice"
-             ,data     : "@url"
-        },
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.POWERPOINT
-         */
-
-        POWERPOINT : Ext.apply({     //experimental
-                      tag      : 'object'
-                     ,cls      : 'x-media x-media-ppt'
-                     ,type     :"application/vnd.ms-powerpoint"
-                     ,file     : "@url"
-                     },Ext.isIE?{classid :"CLSID:EFBD14F0-6BFB-11CF-9177-00805F8813FF"}:false),
+ 
         /**
          * @namespace Ext.ux.Media.mediaTypes.XML
          */
@@ -1991,38 +1934,11 @@ Ext.ux.Media.mediaTypes = {
                 }
 
              },Ext.isIE?{
-                  classid :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
-                 ,CODEBASE :"http://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
-             }:false),
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.RDP
-         */
-
-         RDP : Ext.apply({
-              tag      : 'object'
-             ,cls      : 'x-media x-media-rdp'
-             ,type     : "application/rds"
-             ,unsupportedText: "Remote Desktop Web Connection ActiveX control is required. <a target=\"_msd\" href=\"http://go.microsoft.com/fwlink/?linkid=44333\">Download it here</a>."
-             ,params:{
-                  Server         : '@url'
-                 ,Fullscreen     : false
-                 ,StartConnected : false
-                 ,DesktopWidth   : '@width'
-                 ,DesktopHeight  : '@height'
-             }
-
-         },Ext.isIE?{
-             classid :"CLSID:9059f30f-4eb1-4bd2-9fdc-36f43a218f4a"
-            ,CODEBASE :"msrdp.cab#version=5,2,3790,0"
-
-
-         }:false)
-
+                  classid     :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
+                 ,CODEBASE    :"http" + ((Ext.isSecure) ? 's' : '') + "://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
+             }:false)
+ 
     };
-
-
-
-
 
 if (Ext.provide) {
     Ext.provide('uxmedia');
