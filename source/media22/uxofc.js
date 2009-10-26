@@ -1,7 +1,7 @@
 /* global Ext */
 /**
  * @class Ext.ux.Chart.OFC
- * @version 1.1
+ * @version 1.2
  * @author  Doug Hendricks. doug[always-At]theactivegroup.com
  * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
  */
@@ -30,7 +30,12 @@
    Donations are welcomed: http://donate.theactivegroup.com
    Commercial use is prohibited without a Commercial License. See http://licensing.theactivegroup.com.
 
- Version:  1.1  10/14/2009
+
+ Version:  1.2  10/25/2009
+         Add: Implement setChartDataURL (via new reload method)
+         Add: chartresize event. 
+ 
+ Version:  1.1  10/14/2008
          Add: saveAsImage method since latest OFC2 beta now supports it.
          Add: imagesaved Event.
          Fixes: Corrected ofcCfg options merge for params and flashVars
@@ -65,7 +70,7 @@
     /**
      * @class Ext.ux.Chart.OFC.Adapter
      * @extends Ext.ux.Chart.FlashAdapter
-     * @version 1.0
+     * @version 1.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -74,7 +79,7 @@
      * @param {Object} config The config object
      */
 
-    Ext.ux.Chart.OFC.Adapter = Ext.extend( Ext.ux.Chart.FlashAdapter , {
+    var adapter = Ext.ux.Chart.OFC.Adapter = Ext.extend( Ext.ux.Chart.FlashAdapter , {
 
        /**
         * @cfg {String|Float} requiredVersion The required Flash version necessary to support the Chart object.
@@ -102,7 +107,8 @@
                flashVars : {
                    id          : DOM Id of SWF object (macro '@id')
                    get-data    : {String} Function name to call to gather initial chart series data (.dataFn)
-                   data-file   : A Url to initially load a chart series (.dataURL)
+                   data-file   : A Url to initially load a chart series (.dataURL),
+                   loading     : Custom Loading Message
                }
            }
           }
@@ -136,7 +142,7 @@
                           height    : '@height',
                           width     : '@width',
                           autoSize  : false,
-                          start     :false,
+                          start     : false,
                           renderOnResize:false,
                           scripting : 'always',
                           cls       :'x-media x-media-swf x-chart-ofc',
@@ -153,7 +159,8 @@
                           boundExternals : ['post_image',    //from OFC2 beta 2.2 Hyperion?
                                             'get_img_binary', //new for OFC2 beta 2.2 : returns PNG image as a base64:String
                                             'get_version',
-                                            'load'
+                                            'load',
+                                            'reload'
                                             ]
 
         },
@@ -167,9 +174,16 @@
               * Fires when the image_saved callback is return by the OFC component
               * @event imagesaved
               * @param {Ext.ux.Chart.OFC} this Chart Component
-              * @param {object} the underlying chart component DOM reference
+              * @param {object} chart the underlying chart component DOM reference
               */
-              'imagesaved'
+              'imagesaved',
+             /**
+              * Fires when the image_saved callback is return by the OFC component
+              * @event chartresize
+              * @param {Ext.ux.Chart.OFC} this Chart Component
+              * @param {object} chart the underlying chart component DOM reference
+              */
+              'chartresize'
 
             );
 
@@ -185,7 +199,7 @@
            this._autoLoad = this.dataFn ? null : this.autoLoad;
            delete this.autoLoad;
 
-           chart.OFC.Adapter.superclass.initMedia.call(this);
+           adapter.superclass.initMedia.call(this);
 
        },
 
@@ -202,10 +216,11 @@
            cCfg.params[this.varsName] = Ext.apply({
                 'data-file' : this.dataURL ? this.prepareURL(this.dataURL || null) : null,
                 'get-data'  : this.dataFn ? String(this.dataFn) : null,
-                allowResize : !!this.resizable
+                allowResize : !!this.resizable,
+                loading     : (this.loadMask || {}).msg || null 
                }, cCfg.params[this.varsName] );
 
-           chart.OFC.Adapter.superclass.onBeforeMedia.call(this);
+           adapter.superclass.onBeforeMedia.call(this);
 
        },
        /**
@@ -222,17 +237,12 @@
         */
        setChartData: function(data){
            var o, j;
-
            j = this.assert(data ,null);  //Value/Function assertion
-
-
            if(j && (o = this.getInterface()) && typeof o.load != 'undefined'){
                   if(this.loadMask && this.autoMask && !this.loadMask.active ){
                        this.loadMask.show();
                   }
-
                   j = this.chartData = (typeof j == 'object'? Ext.encode(j) : j);
-
                   o.load(j);
                   //OFC2 does not raise the ofc_ready callback for a load method,
                   //so we will.
@@ -243,13 +253,24 @@
        },
 
        /**
-       * <strong>Not implemented by OFC2 </strong><p>
+       * <strong>Not implemented by all versions of OFC2 </strong><p>
        * Set/update the current chart with a new URL returning a data series.
-       * @param {String} url The URL of the stream to update with.
+       * @param {String} url The URL of the stream to update with (null to reload the last-known dataURL).
        * @param {Boolean} immediate false to defer rendering the new data until the next chart rendering.
        * @default true
+       * @return this
        */
        setChartDataURL  : function(url, immediate){
+        
+         var o;
+         if((o = this.getInterface()) && typeof o.reload != 'undefined'){
+              url && (this.dataURL = url);
+              if(immediate === false)return this;
+              if(this.loadMask && this.autoMask && !this.loadMask.active ){
+                  this.loadMask.show();
+              }
+              o.reload(this.prepareURL(this.dataURL));
+         }
          return this;
         },
 
@@ -280,8 +301,6 @@
           this.load (
            typeof this._autoLoad === 'object' ?
                this._autoLoad : {url: this._autoLoad});
-
-
       },
 
       loadMask : false,
@@ -316,11 +335,9 @@
       getBinaryImage  : function(){
          var o;
         if(o = this.getInterface()){
-
             if(o.get_img_binary !== undefined){
                return o.get_img_binary();
             }
-
         }
 
       },
@@ -335,11 +352,18 @@
 
           return (ns && typeof ns.get_version != 'undefined') ? ns.get_version() : '';
 
-      }
+      },
+      /**
+       * <strong>Not implemented by all versions of OFC2 </strong><p>
+       * Reload the chart with the lastknown dataURL
+       * @return this
+       */
+      reload : Ext.emptyFn
 
     });
 
-
+    adapter.prototype.reload = adapter.prototype.setChartDataURL;
+    
     /**
      * @class Ext.ux.Chart.OFC.Component
      * @extends Ext.ux.Chart.OFC.Adapter
@@ -354,14 +378,14 @@
      */
     Ext.ux.Chart.OFC.Component = Ext.extend(Ext.ux.Media.Flash.Component, {
         ctype : 'Ext.ux.Chart.OFC',
-        mediaClass  : chart.OFC.Adapter
+        mediaClass  : adapter
         });
 
     Ext.reg('openchart', chart.OFC.Component);
     /**
      * @class Ext.ux.Chart.OFC.Panel
      * @extends Ext.ux.Chart.OFC.Adapter
-     * @version 2.1
+     * @version 1.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -372,14 +396,14 @@
      */
     Ext.ux.Chart.OFC.Panel = Ext.extend(Ext.ux.Media.Flash.Panel, {
         ctype : 'Ext.ux.Chart.OFC.Panel',
-        mediaClass  : chart.OFC.Adapter
+        mediaClass  : adapter
         });
 
     Ext.reg('openchartpanel', chart.OFC.Panel);
     /**
      * @class Ext.ux.Chart.OFC.Portlet
      * @extends Ext.ux.Chart.OFC.Adapter
-     * @version 2.1
+     * @version 1.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -396,7 +420,7 @@
         collapsible : true,
         draggable   : true,
         cls         : 'x-portlet x-chart-portlet',
-        mediaClass  : chart.OFC.Adapter
+        mediaClass  : adapter
     });
 
     Ext.reg('openchartportlet', chart.OFC.Portlet);
@@ -416,20 +440,18 @@
 
     Ext.ux.Chart.OFC.Window = Ext.extend(Ext.ux.Media.Flash.Window, {
         ctype : "Ext.ux.Chart.OFC.Window",
-        mediaClass  : chart.OFC.Adapter
+        mediaClass  : adapter
         });
 
     Ext.reg('openchartwindow', chart.OFC.Window);
-
+     
     /* Class Proxy Methods */
-    Ext.apply(chart.OFC.Adapter,{
+    Ext.apply(adapter,{
 
         /** @private  Class method callbacks */
         chartDataRequest : function(DOMId){
-
             var c, d = Ext.get(DOMId);
             if(d && (c = d.ownerCt)){
-
                 return c.onDataRequest?c.onDataRequest() :c.assert(c.blankChartData,null)
             }
             d= null;
@@ -445,6 +467,20 @@
                  //return to Flash asap to expose any callback errors.
                  c.fireEvent.defer(1,c,['imagesaved', c, c.getInterface()]);
               }
+          },
+         
+         /** @private
+          * Class Method
+          * chart-resize Callback handler
+          */
+          
+        onChartResize : function(left, width, top, height, DOMId){
+            var args = Ext.isArray(left) ? args = left : Array.prototype.slice.call(arguments,0);
+            var c, d = Ext.get(args[4] || DOMId);
+            if(d && (c = d.ownerCt)){
+                 c.fireEvent.defer(1,c,['chartresize', c, c.getInterface(), {top:args[2], left:args[0], height:args[3], width:args[1]}]);
+            }
+            d= null;
           }
 
         });
@@ -452,10 +488,14 @@
         window.ofc_ready = window.ofc_ready ?
                 window.ofc_ready.createInterceptor(chart.FlashAdapter.chartOnLoad )
                :chart.FlashAdapter.chartOnLoad;
-
+               
+        window.ofc_resize = window.ofc_resize ?
+                window.ofc_resize.createInterceptor(adapter.onChartResize )
+               :adapter.onChartResize;
+               
         window.open_flash_chart_data = window.open_flash_chart_data ?
-                window.open_flash_chart_data.createInterceptor(chart.OFC.Adapter.chartDataRequest )
-           :chart.OFC.Adapter.chartDataRequest;
+                window.open_flash_chart_data.createInterceptor(adapter.chartDataRequest )
+           :adapter.chartDataRequest;
 
 
 })();
