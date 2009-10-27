@@ -194,7 +194,7 @@
             
             };
 
-         c.on('afterrender', function(){
+         c.on('render', function(){
 
             // Bubble up the layout and set the new
             // visibility mode on parent containers

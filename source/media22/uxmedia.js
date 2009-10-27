@@ -943,7 +943,9 @@
         * 
         */
        initComponent : function(){
-          this.mediaCfg || (this.mediaCfg = {
+          this.mediaCfg || 
+          
+          (this.mediaCfg = {
               mediaType : 'WAV',
               start     : true,
               url       : ''
@@ -1481,7 +1483,7 @@ Ext.ux.Media.mediaTypes = {
                ,type:'application/x-oleobject'
                }:
                {src:"@url"}),
-    
+       
         /**
          * @namespace Ext.ux.Media.mediaTypes.PDF
          *  OLE-TLB public IAcroAXDocShim interface (available on IE only)

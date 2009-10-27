@@ -127,7 +127,7 @@
             
             };
 
-         c.on('afterrender', function(){
+         c.on('render', function(){
 
             // Bubble up the layout and set the new
             // visibility mode on parent containers
@@ -869,7 +869,9 @@
        
        
        initComponent : function(){
-          this.mediaCfg || (this.mediaCfg = {
+          this.mediaCfg || 
+          
+          (this.mediaCfg = {
               mediaType : 'WAV',
               start     : true,
               url       : ''
@@ -1275,7 +1277,7 @@ Ext.ux.Media.mediaTypes = {
                ,type:'application/x-oleobject'
                }:
                {src:"@url"}),
-    
+       
         
 
        PDF : Ext.apply({  //Acrobat plugin thru release 8.0 all crash FF3
