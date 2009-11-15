@@ -349,7 +349,7 @@
               'setDataURL' in o ?
                  o.setDataURL(url) :
                    //FusionCharts Free has no support for dynamic loading of URLs
-                   this.load({url:url,nocache:this.disableCaching} );
+                   this.load({url:url, nocache:this.disableCaching} );
               o=null;
           }
         },
