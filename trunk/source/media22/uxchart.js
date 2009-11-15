@@ -1,8 +1,8 @@
-/* @copyright 2007-2008, Active Group, Inc. All rights reserved.*/
+/* @copyright 2007-2009, Active Group, Inc. All rights reserved.*/
  /**
   * @class Ext.ux.Chart.FlashAdapter
   * @extends Ext.ux.Media.Flash
-  * @version 2.1
+  * @version 2.2
   * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
   * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
   * @author Doug Hendricks,.doug[always-At]theactivegroup.com
@@ -388,12 +388,14 @@
        /** @private */
       setMask  : function(ct) {
 
-          chart.FlashAdapter.superclass.setMask.call(this, ct);
+          chart.FlashAdapter.superclass.setMask.apply(this, arguments);
 
           //loadMask reserved for data loading operations only
           //see: @cfg:mediaMask for Chart object masking
-          if(this.loadMask && !this.loadMask.disabled){
-              this.loadMask = new Ext.ux.IntelliMask( this[this.mediaEl] || ct, this.loadMask);
+          var lm=this.loadMask;
+          if(lm && !lm.disabled){
+              lm.el || (this.loadMask = lm = new Ext.ux.IntelliMask( this[this.mediaEl] || ct, 
+                 Ext.isObject(lm) ? lm : {msg : lm}));
           }
 
       },

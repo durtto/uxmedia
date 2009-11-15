@@ -17,6 +17,8 @@
 
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
+ Version   2.2  11/12/2009
+          Adds: Ext 3.1 Compatibility
  Version   2.1  11/11/2008
           Fixes:
             Corrects missing unsupportedText markup rendering.
@@ -103,7 +105,7 @@
    /**
     *
     * @class Ext.ux.Media
-    * @version 2.1
+    * @version 2.2
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
     * @constructor
@@ -123,7 +125,7 @@
     
     var stateRE = /4$/i;
 
-    if(parseFloat(Ext.version) < 2.1){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
+    if(parseFloat(Ext.version) < 2.2){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
     Ext.ux.Media.prototype = {
         
@@ -145,19 +147,17 @@
          mediaCfg        : null,
          mediaVersion    : null,
          requiredVersion : null,
+         
+         /**
+          * @cfg {String} hideMode  <p>Note: If the ux.VisibilityMode plugin is available, a value of 'nosize' will activate
+          * the plugin to prevent DOM reflow from re-initializing the rendered media.
+          */
+         hideMode        : 'display',
 
          /**
           * @cfg {String/DOMHelperObject} unsupportedText Text Markup/DOMHelper config displayed when the media is not available or cannot be rendered without an additional browser plugin.
           */
          unsupportedText : null,
-
-         /** @cfg {string} hideMode Defines the hideMode for Ext.ux.Media component sub-classes.<p>
-          * If the the value of 'nosize' is used, the {@link Ext.ux.VisibilityMode} plugin is applied to the media Component
-          * as well as to upstream layout Containers.
-          * @default for IE: 'display', 'nosize' for all other browsers
-         */
-
-         hideMode      : !Ext.isIE?'nosize':'display',
 
          animCollapse  :  Ext.enableFx && Ext.isIE,
 
@@ -171,7 +171,9 @@
           * @private (usually called once by initComponent)
           * Subclasses should override for special startup tasks
           */
-         initMedia      : function(){ },
+         initMedia      : function(){
+            this.hasVisModeFix = !!Ext.ux.plugin.VisibilityMode; 
+         },
 
          /**
           * @cfg {boolean} disableCaching Disable browser caching of URLs
@@ -366,7 +368,7 @@
          setMask  : function(el) {
              var mm;
              if((mm = this.mediaMask)){
-                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,mm));
+                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,Ext.isObject(mm) ? mm : {msg : mm}));
                     mm.el.addClass('x-media-mask');
              }
 
@@ -553,18 +555,15 @@
             };
 
             this.html = this.contentEl = this.items = null;
+           
+            this.initMedia();
              
             //Attach the Visibility Fix (if available) to the current instance
-            if(this.hideMode == 'nosize'){
-               this.hasVisModeFix ? 
+            if(this.hideMode == 'nosize' && this.hasVisModeFix ){
                   new Ext.ux.plugin.VisibilityMode({ 
                       elements: ['bwrap','mediaEl'],
-                      hideMode:'nosize'}).init(this) 
-                   //default to 'display' of the plugin is not available
-                  : (this.hideMode = 'display');
+                      hideMode:'nosize'}).init(this); 
             } 
-
-            this.initMedia();
 
             //Inline rendering support for this and all subclasses
             this.toString = this.asMarkup;
@@ -631,7 +630,7 @@
     /**
      * @class Ext.ux.Media.Component
      * @extends Ext.BoxComponent
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -692,7 +691,7 @@
     /**
      * @class Ext.ux.Media.Panel
      * @extends Ext.Panel
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -752,7 +751,7 @@
     /**
      * @class Ext.ux.Media.Portlet
      * @extends Ext.ux.Media.Panel
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -896,11 +895,11 @@
             }
             //NodeList has an item and length property
             //IXMLDOMNodeList has nextNode method, needs to be checked first.
-            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
+            return ((v.nextNode || v.context || v.item) && Ext.isNumber(v.length));
         },
         
-        isObject : function(v){
-            return v && typeof v == "object";
+        isObject : function(obj){
+            return !!obj && Object.prototype.toString.apply(obj) == '[object Object]';
         }
      });
     
@@ -943,9 +942,7 @@
         * 
         */
        initComponent : function(){
-          this.mediaCfg || 
-          
-          (this.mediaCfg = {
+          this.mediaCfg || (this.mediaCfg = {
               mediaType : 'WAV',
               start     : true,
               url       : ''
@@ -1177,74 +1174,31 @@
 
              this.removeClass(["x-masked", "x-masked-relative"]);
 
-         },
-
-        /**
-          * Removes this element from the DOM and deletes it from the cache
-          * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
-          * @param {Boolean} deep (optional) Perform a deep cleanse of all nested childNodes as well.
-          */
-
-        remove : function(cleanse, deep){
-              if(this.dom){
-                this.unmask(true);
-                this.removeAllListeners();    //remove any Ext-defined DOM listeners
-                if(cleanse){ this.cleanse(true, deep); }
-                Ext.removeNode(this.dom);
-                this.dom = null;  //clear ANY DOM references
-              }
-         },
-
-        /**
-         * Deep cleansing childNode Removal
-         * @param {Boolean} forceReclean (optional) By default the element
-         * keeps track if it has been cleansed already so
-         * you can call this over and over. However, if you update the element and
-         * need to force a reclean, you can pass true.
-         * @param {Boolean} deep (optional) Perform a deep cleanse of all childNodes as well.
-         */
-        cleanse : function(forceReclean, deep){
-            if(this.isCleansed && forceReclean !== true){
-                return this;
-            }
-
-            var d = this.dom, n = d.firstChild, nx;
-             while(d && n){
-                 nx = n.nextSibling;
-                 if(deep){
-                         Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
-                         }
-                 Ext.removeNode(n);
-                 n = nx;
-             }
-             delete Ext.Element._flyweights['_cleanser']; //orphan reference cleanup
-             this.isCleansed = true;
-             return this;
          }
+
+        
     });
 
     /**
      * @class Ext.ux.Media.Element
      * @extends Ext.Element
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      */
+    
     Ext.ux.Media.Element = Ext.extend ( Ext.Element , {
-
-        
+    
         /**
         * @private
         */
         constructor   : function( element ) {
-
+            
             if(!element ){ return null; }
-
-            var dom = typeof element == "string" ? d.getElementById(element) : element.dom || element ;
-
+            var dom = Ext.getDom(element);
             if(!dom ){ return null; }
 
             /**
@@ -1256,9 +1210,17 @@
              * The DOM element ID
              * @type String
              */
-            this.id = dom.id || Ext.id(dom);
-
-            Ext.Element.cache[this.id] = this;
+            this.id = Ext.id(dom, 'media');
+            
+            if(Ext.elCache){  //Ext 3.1 compat
+                Ext.elCache[this.id] || (Ext.elCache[this.id] = {
+                    events : {},
+                    data : {}
+                });
+                Ext.elCache[this.id].el = this;
+            }else {
+                Ext.Element.cache[this.id] = this;
+            }
 
         },
 
@@ -1284,8 +1246,22 @@
                 this.maskEl.unmask(remove);
                 this.maskEl = null;
             }
-        }
+        },
+        
+        /**
+          * Removes this element from the DOM and deletes it from the cache
+          * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
+          * @param {Boolean} deep (optional) Perform a deep cleanse of all nested childNodes as well.
+          */
 
+        remove : function(cleanse, deep){
+              if(this.dom){
+                this.unmask(true);
+                this.removeAllListeners();    //remove any Ext-defined DOM listeners
+                Ext.ux.Media.Element.superclass.remove.apply(this,arguments);
+                this.dom = null;  //clear ANY DOM references
+              }
+         }
 
     });
 
@@ -1303,7 +1279,7 @@
      */
     Ext.ux.IntelliMask = function(el, config){
 
-        Ext.apply(this, config);
+        Ext.apply(this, config || {msg : this.msg});
         this.el = Ext.get(el);
 
     };
@@ -1395,7 +1371,7 @@
             var opt={}, autoHide = this.autoHide;
             fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
 
-            if(typeof msg == 'object'){
+            if(Ext.isObject(msg)){
                 opt = msg;
                 msg = opt.msg;
                 msgCls = opt.msgCls;
@@ -1483,7 +1459,7 @@ Ext.ux.Media.mediaTypes = {
                ,type:'application/x-oleobject'
                }:
                {src:"@url"}),
-       
+    
         /**
          * @namespace Ext.ux.Media.mediaTypes.PDF
          *  OLE-TLB public IAcroAXDocShim interface (available on IE only)
@@ -2157,7 +2133,16 @@ Ext.applyIf(Array.prototype, {
     }
 });
 
-
+/*
+ * My.Window = Ext.extendX(Ext.Window, function(supr){
+    return {
+        initComponent : function(){
+            this.foo = 1;
+            supr.initComponent.call(this);
+        }
+    }                
+});
+ */
 
 /* Previous Release compatability: */
 
