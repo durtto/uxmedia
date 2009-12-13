@@ -1,5 +1,5 @@
 /*
- * ux.Media.Flex 2.1.2
+ * ux.Media.Flex 2.1.3
  * Copyright(c) 2008-2009, Active Group, Inc.
  * licensing@theactivegroup.com
  * 
@@ -42,7 +42,7 @@
             
             
 	        isDisplayed : function() {
-	            return !(this.hasClass(this.visibilityCls) || this.dom.style[DISPLAY] == NONE);
+	            return !(this.hasClass(this.visibilityCls) || this.isStyle(DISPLAY, NONE));
 	        },
 	        // private
 	        fixDisplay : function(){
@@ -53,10 +53,34 @@
 	
 	        
 	        isVisible : function(deep) {
-	            return this.visible || 
-                   (!this.isStyle(VISIBILITY, HIDDEN) && 
-                       this.visibilityCls ? !this.hasClass(this.visibilityCls) :!this.isStyle(DISPLAY, NONE));
-	        }
+	            var vis = this.visible ||
+				    (!this.isStyle(VISIBILITY, HIDDEN) && 
+                        (this.visibilityCls ? 
+                            !this.hasClass(this.visibilityCls) : 
+                                !this.isStyle(DISPLAY, NONE))
+                      );
+				  
+				  if (deep !== true || !vis) {
+				    return vis;
+				  }
+				
+				  var p = this.dom.parentNode,
+                      bodyRE = /body/i;
+				
+				  while (p && !bodyRE.test(p.tagName)) {
+				    if (!Ext.fly(p, '_isVisible').isVisible()) {
+				      return false;
+				    }
+				    p = p.parentNode;
+				  }
+				  return true;
+
+	        },
+            //Assert isStyle method for Ext 2.x
+            isStyle: supr.isStyle || function(style, val) {
+			    return this.getStyle(style) == val;
+			}
+
 	    };
         
         //Add basic capabilities to the Ext.Element.Flyweight class
@@ -198,7 +222,7 @@
     
     var stateRE = /4$/i;
 
-    if(parseFloat(Ext.version) < 2.1){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
+    if(parseFloat(Ext.version) < 2.2){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
     Ext.ux.Media.prototype = {
         
@@ -210,13 +234,12 @@
          mediaCfg        : null,
          mediaVersion    : null,
          requiredVersion : null,
+         
+         
+         hideMode        : 'display',
 
          
          unsupportedText : null,
-
-         
-
-         hideMode      : !Ext.isIE?'nosize':'display',
 
          animCollapse  :  Ext.enableFx && Ext.isIE,
 
@@ -227,7 +250,9 @@
          bodyStyle     : {position: 'relative'},
 
         
-         initMedia      : function(){ },
+         initMedia      : function(){
+            this.hasVisModeFix = !!Ext.ux.plugin.VisibilityMode; 
+         },
 
          
          disableCaching  : false,
@@ -408,7 +433,7 @@
          setMask  : function(el) {
              var mm;
              if((mm = this.mediaMask)){
-                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,mm));
+                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,Ext.isObject(mm) ? mm : {msg : mm}));
                     mm.el.addClass('x-media-mask');
              }
 
@@ -567,18 +592,15 @@
             };
 
             this.html = this.contentEl = this.items = null;
+           
+            this.initMedia();
              
             //Attach the Visibility Fix (if available) to the current instance
-            if(this.hideMode == 'nosize'){
-               this.hasVisModeFix ? 
+            if(this.hideMode == 'nosize' && this.hasVisModeFix ){
                   new Ext.ux.plugin.VisibilityMode({ 
                       elements: ['bwrap','mediaEl'],
-                      hideMode:'nosize'}).init(this) 
-                   //default to 'display' of the plugin is not available
-                  : (this.hideMode = 'display');
+                      hideMode:'nosize'}).init(this); 
             } 
-
-            this.initMedia();
 
             //Inline rendering support for this and all subclasses
             this.toString = this.asMarkup;
@@ -842,11 +864,11 @@
             }
             //NodeList has an item and length property
             //IXMLDOMNodeList has nextNode method, needs to be checked first.
-            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
+            return ((v.nextNode || v.context || v.item) && Ext.isNumber(v.length));
         },
         
-        isObject : function(v){
-            return v && typeof v == "object";
+        isObject : function(obj){
+            return !!obj && Object.prototype.toString.apply(obj) == '[object Object]';
         }
      });
     
@@ -869,9 +891,7 @@
        
        
        initComponent : function(){
-          this.mediaCfg || 
-          
-          (this.mediaCfg = {
+          this.mediaCfg || (this.mediaCfg = {
               mediaType : 'WAV',
               start     : true,
               url       : ''
@@ -1071,60 +1091,36 @@
 
              this.removeClass(["x-masked", "x-masked-relative"]);
 
-         },
-
-        
-
-        remove : function(cleanse, deep){
-              if(this.dom){
-                this.unmask(true);
-                this.removeAllListeners();    //remove any Ext-defined DOM listeners
-                if(cleanse){ this.cleanse(true, deep); }
-                Ext.removeNode(this.dom);
-                this.dom = null;  //clear ANY DOM references
-              }
-         },
-
-        
-        cleanse : function(forceReclean, deep){
-            if(this.isCleansed && forceReclean !== true){
-                return this;
-            }
-
-            var d = this.dom, n = d.firstChild, nx;
-             while(d && n){
-                 nx = n.nextSibling;
-                 if(deep){
-                         Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
-                         }
-                 Ext.removeNode(n);
-                 n = nx;
-             }
-             delete Ext.Element._flyweights['_cleanser']; //orphan reference cleanup
-             this.isCleansed = true;
-             return this;
          }
+
+        
     });
 
     
+    
     Ext.ux.Media.Element = Ext.extend ( Ext.Element , {
-
-        
+    
         
         constructor   : function( element ) {
-
+            
             if(!element ){ return null; }
-
-            var dom = typeof element == "string" ? d.getElementById(element) : element.dom || element ;
-
+            var dom = Ext.getDom(element);
             if(!dom ){ return null; }
 
             
             this.dom = dom;
             
-            this.id = dom.id || Ext.id(dom);
-
-            Ext.Element.cache[this.id] = this;
+            this.id = Ext.id(dom, 'media');
+            
+            if(Ext.elCache){  //Ext 3.1 compat
+                Ext.elCache[this.id] || (Ext.elCache[this.id] = {
+                    events : {},
+                    data : {}
+                });
+                Ext.elCache[this.id].el = this;
+            }else {
+                Ext.Element.cache[this.id] = this;
+            }
 
         },
 
@@ -1142,8 +1138,18 @@
                 this.maskEl.unmask(remove);
                 this.maskEl = null;
             }
-        }
+        },
+        
+        
 
+        remove : function(cleanse, deep){
+              if(this.dom){
+                this.unmask(true);
+                this.removeAllListeners();    //remove any Ext-defined DOM listeners
+                Ext.ux.Media.Element.superclass.remove.apply(this,arguments);
+                this.dom = null;  //clear ANY DOM references
+              }
+         }
 
     });
 
@@ -1152,7 +1158,7 @@
     
     Ext.ux.IntelliMask = function(el, config){
 
-        Ext.apply(this, config);
+        Ext.apply(this, config || {msg : this.msg});
         this.el = Ext.get(el);
 
     };
@@ -1197,7 +1203,7 @@
             var opt={}, autoHide = this.autoHide;
             fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
 
-            if(typeof msg == 'object'){
+            if(Ext.isObject(msg)){
                 opt = msg;
                 msg = opt.msg;
                 msgCls = opt.msgCls;
@@ -1277,7 +1283,7 @@ Ext.ux.Media.mediaTypes = {
                ,type:'application/x-oleobject'
                }:
                {src:"@url"}),
-       
+    
         
 
        PDF : Ext.apply({  //Acrobat plugin thru release 8.0 all crash FF3
