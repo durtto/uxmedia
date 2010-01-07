@@ -206,7 +206,8 @@
             return encodeIt ? 
                  ((out && Ext.isObject(out)) ? Ext.urlEncode(out) : encodeURI(out))
                  : out;
-        };
+        },
+        toString = Object.prototype.toString;
         
     
     Ext.ns('Ext.ux.plugin');
@@ -219,10 +220,8 @@
          Ext.apply(this,config||{});
          this.initMedia();
     };
-    var ux = Ext.ux.Media;
-    
-    
-    var stateRE = /4$/i;
+    var ux = Ext.ux.Media,
+        stateRE = /4$/i;
 
     if(parseFloat(Ext.version) < 2.2){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
@@ -525,18 +524,18 @@
           onMediaLoad : function(e){
                if(e && e.type == 'load'){
                   this.fireEvent('mediaload',this, this.mediaObject );
-
-                  if(this.mediaMask && this.autoMask){ this.mediaMask.hide(); }
-
+                  this.mediaMask && this.autoMask && this.mediaMask.hide();
                }
           },
           
           onAfterMedia   : function(ct){
                var mo;
-               if(this.mediaCfg && ct && (mo = this.mediaObject =
-                       new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true) ))
-                       && mo.dom
-                       ){
+               if(this.mediaCfg && ct && 
+                  (mo = new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true),true )) &&
+                   mo.dom
+                  ){
+                   //Update ElCache with the new Instance
+                   this.mediaObject = mo;
                    mo.ownerCt = this;
 
                    var L; //Reattach any DOM Listeners after rendering.
@@ -557,11 +556,8 @@
                        this._countPoll = 0;
                        this.pollReadyState( this.onMediaLoad.createDelegate(this,[{type:'load'}],0));
                    }
-
                }
-              if(this.autoWidth || this.autoHeight){
-                this.syncSize();
-              }
+              (this.autoWidth || this.autoHeight) && this.syncSize();
           },
 
           
@@ -837,7 +833,6 @@
             }()));
             
      Ext.iterate || Ext.apply (Ext, {
-     
         iterate : function(obj, fn, scope){
             if(Ext.isEmpty(obj)){
                 return;
@@ -848,7 +843,7 @@
             }else if(Ext.isObject(obj)){
                 for(var prop in obj){
                     if(obj.hasOwnProperty(prop)){
-                        if(fn.call(scope || obj, prop, obj[prop]) === false){
+                        if(fn.call(scope || obj, prop, obj[prop], obj) === false){
                             return;
                         };
                     }
@@ -866,11 +861,11 @@
             }
             //NodeList has an item and length property
             //IXMLDOMNodeList has nextNode method, needs to be checked first.
-            return ((v.nextNode || v.context || v.item) && Ext.isNumber(v.length));
+            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
         },
         
         isObject : function(obj){
-            return !!obj && Object.prototype.toString.apply(obj) == '[object Object]';
+            return !!obj && toString.apply(obj) == '[object Object]';
         }
      });
     
@@ -1033,71 +1028,6 @@
 
     });
 
-    Ext.override(Ext.Element, {
-
-         
-         mask : function(msg, msgCls){
-
-              if(this.getStyle("position") == "static"){
-                  this.addClass("x-masked-relative");
-              }
-
-             this._mask ||
-                 (this._mask = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask"}, true));
-
-
-             if(!this.select('iframe,frame,object,embed').elements.length){
-                 this.addClass("x-masked");  //causes element re-init after reflow (overflow:hidden)
-             }
-
-             //may have been hidden previously (and not removed)
-             this._mask.setDisplayed(true);
-
-             if(typeof msg == 'string'){
-                  this._maskMsg || 
-                    (this._maskMsg = Ext.DomHelper.append(this.dom, {
-                        style:"visibility:hidden",
-                        cls: msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg", 
-                        cn:{tag:'div', html: msg}
-                        }, true));
-                  
-                  this._maskMsg.center(this).setVisible(true);
-             }
-
-             //Adjust Mask Height for IE strict
-             if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
-                  this._mask.setSize(undefined, this.getHeight());
-             }
-             return this._mask;
-         },
-
-         
-         unmask : function(remove){
-
-            if(this._maskMsg ){
-
-                this._maskMsg.setVisible(false);
-                if(remove !== false){
-                    this._maskMsg.remove(true);
-                    delete this._maskMsg;
-                 }
-            }
-
-            if(this._mask ) {
-                 this._mask.setDisplayed(false);
-                 if(remove !== false){
-                     this._mask.remove(true);
-                     delete this._mask;
-                 }
-             }
-
-             this.removeClass(["x-masked", "x-masked-relative"]);
-
-         }
-
-        
-    });
-
     
     
     Ext.ux.Media.Element = Ext.extend ( Ext.Element , {
@@ -1105,14 +1035,8 @@
         
         constructor   : function( element ) {
             
-            if(!element ){ return null; }
-            var dom = Ext.getDom(element);
-            if(!dom ){ return null; }
-
-            
-            this.dom = dom;
-            
-            this.id = Ext.id(dom, 'media');
+            Ext.ux.Media.Element.superclass.constructor.apply(this, arguments);
+           
             
             if(Ext.elCache){  //Ext 3.1 compat
                 Ext.elCache[this.id] || (Ext.elCache[this.id] = {
