@@ -17,6 +17,8 @@
 
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
+ Version   2.2  11/12/2009
+          Adds: Ext 3.1 Compatibility
  Version   2.1  11/11/2008
           Fixes:
             Corrects missing unsupportedText markup rendering.
@@ -81,14 +83,19 @@
 
 (function(){
 
-    //remove null and undefined members from an object
-    var compactObj =  function(obj){
-            var out = {};
-            for (var member in obj){
-               (obj[member] === null || obj[member] === undefined) || (out[member] = obj[member]);
+    //remove null and undefined members from an object and optionally URL encode the results
+    var compactObj =  function(obj, encodeIt){
+            var out = obj && Ext.isObject(obj)? {} : obj;
+            if(out && Ext.isObject(out)){
+	            for (var member in obj){
+	               (obj[member] === null || obj[member] === undefined) || (out[member] = obj[member]);
+	            }
             }
-            return out;
-        };
+            return encodeIt ? 
+                 ((out && Ext.isObject(out)) ? Ext.urlEncode(out) : encodeURI(out))
+                 : out;
+        },
+        toString = Object.prototype.toString;
         
     /**
      * plugin detection namespace for VisibilityMode fixes
@@ -99,7 +106,7 @@
    /**
     *
     * @class Ext.ux.Media
-    * @version 2.1
+    * @version 2.2
     * @author Doug Hendricks. doug[always-At]theactivegroup.com
     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
     * @constructor
@@ -114,12 +121,10 @@
          Ext.apply(this,config||{});
          this.initMedia();
     };
-    var ux = Ext.ux.Media;
-    
-    
-    var stateRE = /4$/i;
+    var ux = Ext.ux.Media,
+        stateRE = /4$/i;
 
-    if(parseFloat(Ext.version) < 2.1){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
+    if(parseFloat(Ext.version) < 2.2){ throw "Ext.ux.Media and sub-classes are not License-Compatible with your Ext release.";}
 
     Ext.ux.Media.prototype = {
         
@@ -141,19 +146,17 @@
          mediaCfg        : null,
          mediaVersion    : null,
          requiredVersion : null,
+         
+         /**
+          * @cfg {String} hideMode  <p>Note: If the ux.VisibilityMode plugin is available, a value of 'nosize' will activate
+          * the plugin to prevent DOM reflow from re-initializing the rendered media.
+          */
+         hideMode        : 'display',
 
          /**
           * @cfg {String/DOMHelperObject} unsupportedText Text Markup/DOMHelper config displayed when the media is not available or cannot be rendered without an additional browser plugin.
           */
          unsupportedText : null,
-
-         /** @cfg {string} hideMode Defines the hideMode for Ext.ux.Media component sub-classes.<p>
-          * If the the value of 'nosize' is used, the {@link Ext.ux.VisibilityMode} plugin is applied to the media Component
-          * as well as to upstream layout Containers.
-          * @default for IE: 'display', 'nosize' for all other browsers
-         */
-
-         hideMode      : !Ext.isIE?'nosize':'display',
 
          animCollapse  :  Ext.enableFx && Ext.isIE,
 
@@ -163,13 +166,13 @@
 
          bodyStyle     : {position: 'relative'},
 
-         visibilityCls : !Ext.isIE ?'x-hide-nosize':null,
-
         /**
           * @private (usually called once by initComponent)
           * Subclasses should override for special startup tasks
           */
-         initMedia      : function(){ },
+         initMedia      : function(){
+            this.hasVisModeFix = !!Ext.ux.plugin.VisibilityMode; 
+         },
 
          /**
           * @cfg {boolean} disableCaching Disable browser caching of URLs
@@ -232,21 +235,22 @@
 
              if( m.mediaType){
 
-                 var value,p, El = Ext.Element.prototype;
-
+                 var value,tag, p, El = Ext.Element.prototype;
                  var media = Ext.apply({}, this.getMediaType(this.assert(m.mediaType,false)) || false );
-
                  var params = compactObj(Ext.apply(media.params||{},m.params || {}));
-
                  for(var key in params){
 
                     if(params.hasOwnProperty(key)){
                       m.children || (m.children = []);
                       p = this.assert(params[key],null);
-                      m.children.push({tag:'param'
+                      p && (p = compactObj(p, m.encodeParams !== false));
+                      tag = 
+                        {tag:'param'
                          ,name:key
-                         ,value: typeof p === 'object'?Ext.urlEncode(compactObj(p)):encodeURI(p)
-                         });
+                         ,value: p 
+                       };
+                       (tag.value == key) && delete tag.value;
+                       p && m.children.push(tag);
 
                     }
                  }
@@ -318,6 +322,7 @@
                  delete   m.listeners;
                  delete   m.height;
                  delete   m.width;
+                 delete   m.encodeParams;
                  return m;
               }else{
                  var unsup = this.assert(m.unsupportedText|| this.unsupportedText || media.unsupportedText,null);
@@ -351,6 +356,7 @@
                       }
                     }
                   }
+                  
                   return m;
             }
          },
@@ -361,7 +367,7 @@
          setMask  : function(el) {
              var mm;
              if((mm = this.mediaMask)){
-                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,mm));
+                    mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,Ext.isObject(mm) ? mm : {msg : mm}));
                     mm.el.addClass('x-media-mask');
              }
 
@@ -466,18 +472,18 @@
           onMediaLoad : function(e){
                if(e && e.type == 'load'){
                   this.fireEvent('mediaload',this, this.mediaObject );
-
-                  if(this.mediaMask && this.autoMask){ this.mediaMask.hide(); }
-
+                  this.mediaMask && this.autoMask && this.mediaMask.hide();
                }
           },
           /** @private */
           onAfterMedia   : function(ct){
                var mo;
-               if(this.mediaCfg && ct && (mo = this.mediaObject =
-                       new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true) ))
-                       && mo.dom
-                       ){
+               if(this.mediaCfg && ct && 
+                  (mo = new (this.elementClass || Ext.ux.Media.Element)(ct.child('.x-media', true),true )) &&
+                   mo.dom
+                  ){
+                   //Update ElCache with the new Instance
+                   this.mediaObject = mo;
                    mo.ownerCt = this;
 
                    var L; //Reattach any DOM Listeners after rendering.
@@ -498,11 +504,8 @@
                        this._countPoll = 0;
                        this.pollReadyState( this.onMediaLoad.createDelegate(this,[{type:'load'}],0));
                    }
-
                }
-              if(this.autoWidth || this.autoHeight){
-                this.syncSize();
-              }
+              (this.autoWidth || this.autoHeight) && this.syncSize();
           },
 
           /**
@@ -512,13 +515,13 @@
          pollReadyState : function( cb, readyRE){
 
             var media = this.getInterface();
-            if(media && typeof media.readyState != 'undefined'){
+            if(media && 'readyState' in media){
                 (readyRE || stateRE).test(media.readyState) ? cb() : arguments.callee.defer(10,this,arguments);
             }
          },
 
           /**
-          * @return {Ext.Element} reference to the rendered media Object.
+          * @return {HTMLElement} reference to the rendered media DOM Element.
           */
           getInterface  : function(){
               return this.mediaObject?this.mediaObject.dom||null:null;
@@ -548,18 +551,15 @@
             };
 
             this.html = this.contentEl = this.items = null;
-
-            //Attach the Visibility Fix (if available) to the current instance
-            if(this.hideMode == 'nosize'){
-                
-               this.hasVisModeFix ? new Ext.ux.plugin.VisibilityMode({
-                 visibilityCls   : 'x-hide-nosize'
-                }).init(this) :
-                //default to 'display' of the plugin is not available
-                (this.hideMode = 'display');
-            } 
-
+           
             this.initMedia();
+             
+            //Attach the Visibility Fix (if available) to the current instance
+            if(this.hideMode == 'nosize' && this.hasVisModeFix ){
+                  new Ext.ux.plugin.VisibilityMode({ 
+                      elements: ['bwrap','mediaEl'],
+                      hideMode:'nosize'}).init(this); 
+            } 
 
             //Inline rendering support for this and all subclasses
             this.toString = this.asMarkup;
@@ -594,7 +594,9 @@
 
             //set the mediaMask
             this.setMask(this[this.mediaEl] || ct);
-
+            
+            componentAdapter.setAutoScroll.call(this);
+            
             if(!this.mediaCfg.renderOnResize ){
                 this.renderMedia(this.mediaCfg,this[this.mediaEl] || ct);
             }
@@ -608,13 +610,23 @@
             Ext.destroy(this.mediaMask, this.loadMask);
             this.lastCt = this.mediaObject = this.renderTo = this.applyTo = this.mediaMask = this.loadMask = null;
 
+        },
+         /** @private */
+        setAutoScroll   : function(){
+            if(this.rendered){
+                this.getContentTarget().setOverflow(!!this.autoScroll ? 'auto':'hidden');
+            }
+        },
+        
+        getContentTarget : function(){
+            return this[this.mediaEl];
         }
     };
 
     /**
      * @class Ext.ux.Media.Component
      * @extends Ext.BoxComponent
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -633,15 +645,17 @@
         * @default 'el'
         */
         mediaEl         : 'el',
+        
+        autoScroll    : true,
 
         autoEl  : {tag:'div',style : { overflow: 'hidden', display:'block',position: 'relative'}},
 
         cls     : "x-media-comp",
 
         mediaClass    : Ext.ux.Media,
-        constructor   : function(){
-         //Inherit the ux.Media class
-          Ext.apply(this , this.mediaClass.prototype );
+        constructor   : function(config){
+          //Inherit the ux.Media class
+          Ext.apply(this , config, this.mediaClass.prototype );
           ux.Component.superclass.constructor.apply(this, arguments);
         },
         /** @private */
@@ -660,13 +674,11 @@
             this.rendered && ux.Component.superclass.beforeDestroy.apply(this,arguments);
          },
         doAutoLoad : Ext.emptyFn,
-         /** @private */
-        setAutoScroll   : function(){
-            if(this.rendered && this.autoScroll){
-                this.getEl().setOverflow('auto');
-            }
-        }
-
+        
+        getContentTarget : componentAdapter.getContentTarget,
+        //Ext 2.x does not have Box setAutoscroll
+        setAutoScroll : componentAdapter.setAutoScroll
+        
     });
 
     Ext.reg('uxmedia', Ext.ux.Media.Component);
@@ -675,7 +687,7 @@
     /**
      * @class Ext.ux.Media.Panel
      * @extends Ext.Panel
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -687,25 +699,24 @@
 
     Ext.ux.Media.Panel = Ext.extend( Ext.Panel,  {
 
-         cls           : "x-media-panel",
+        cls           : "x-media-panel",
 
-         ctype         : "Ext.ux.Media.Panel",
+        ctype         : "Ext.ux.Media.Panel",
+         
+        autoScroll    : false,
 
           /**
            * @cfg {String} mediaEl The name of the containing element for the media.
            * @default 'body'
            */
-         mediaEl       : 'body',
+        mediaEl       : 'body',
 
-         mediaClass    : Ext.ux.Media,
+        mediaClass    : Ext.ux.Media,
 
-         constructor   : function(){
-
-         //Inherit the ux.Media class
-          Ext.apply(this , this.mediaClass.prototype );
-
-          ux.Panel.superclass.constructor.apply(this, arguments);
-
+        constructor   : function(config){
+	         //Inherit the ux.Media class
+	          Ext.apply(this , this.mediaClass.prototype );
+	          ux.Panel.superclass.constructor.apply(this, arguments);
         },
 
         /** @private */
@@ -723,7 +734,12 @@
             componentAdapter.beforeDestroy.apply(this,arguments);
             this.rendered && ux.Panel.superclass.beforeDestroy.apply(this,arguments);
          },
-        doAutoLoad : Ext.emptyFn
+        doAutoLoad : Ext.emptyFn,
+        
+        getContentTarget : componentAdapter.getContentTarget,
+
+        setAutoScroll : componentAdapter.setAutoScroll
+
     });
 
 
@@ -731,7 +747,7 @@
     /**
      * @class Ext.ux.Media.Portlet
      * @extends Ext.ux.Media.Panel
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -770,16 +786,15 @@
     Ext.ux.Media.Window = Ext.extend( Ext.Window ,{
 
         /** @private */
-        constructor   : function(config){
-
-          Ext.apply(this , this.mediaClass.prototype );
-
+        constructor   : function(){
+          Ext.applyIf(this , this.mediaClass.prototype );
           ux.Window.superclass.constructor.apply(this, arguments);
-
         },
 
          cls           : "x-media-window",
-
+         
+         autoScroll    : false,
+         
          ctype         : "Ext.ux.Media.Window",
 
          mediaClass    : Ext.ux.Media,
@@ -807,13 +822,265 @@
             this.rendered && ux.Window.superclass.beforeDestroy.apply(this,arguments);
          },
 
-        doAutoLoad : Ext.emptyFn
+        doAutoLoad : Ext.emptyFn,
+        
+        getContentTarget : componentAdapter.getContentTarget,
+
+        setAutoScroll : componentAdapter.setAutoScroll
 
     });
 
     Ext.reg('mediawindow', ux.Window);
 
+    Ext.ns('Ext.capabilities');
+    Ext.ns('Ext.ux.Media.plugin');
+    /**
+     * Check Basic HTML5 Element support for the <audio> tag and/or Audio object.
+     */
+    var CAPS = (Ext.capabilities.hasAudio || 
+       (Ext.capabilities.hasAudio = function(){
+                
+                var aTag = !!document.createElement('audio').canPlayType,
+                    aAudio = ('Audio' in window) ? new Audio('') : {},
+                    caps = aTag || ('canPlayType' in aAudio) ? { tag : aTag, object : ('play' in aAudio)} : false,
+                    mime,
+                    chk,
+                    mimes = {
+                            mp3 : 'audio/mpeg', //mp3
+                            ogg : 'audio/ogg',  //Ogg Vorbis
+                            wav : 'audio/x-wav', //wav 
+                            basic : 'audio/basic', //au, snd
+                            aif  : 'audio/x-aiff' //aif, aifc, aiff
+                        };
+                    
+                    if(caps && ('canPlayType' in aAudio)){
+                       for (chk in mimes){ 
+                            caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
+                        }
+                    }                     
+                    return caps;
+            }()));
+            
+     Ext.iterate || Ext.apply (Ext, {
+        iterate : function(obj, fn, scope){
+            if(Ext.isEmpty(obj)){
+                return;
+            }
+            if(Ext.isIterable(obj)){
+                Ext.each(obj, fn, scope);
+                return;
+            }else if(Ext.isObject(obj)){
+                for(var prop in obj){
+                    if(obj.hasOwnProperty(prop)){
+                        if(fn.call(scope || obj, prop, obj[prop], obj) === false){
+                            return;
+                        };
+                    }
+                }
+            }
+        },
+        isIterable : function(v){
+            //check for array or arguments
+            if(Ext.isArray(v) || v.callee){
+                return true;
+            }
+            //check for node list type
+            if(/NodeList|HTMLCollection/.test(toString.call(v))){
+                return true;
+            }
+            //NodeList has an item and length property
+            //IXMLDOMNodeList has nextNode method, needs to be checked first.
+            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
+        },
+        
+        isObject : function(obj){
+            return !!obj && toString.apply(obj) == '[object Object]';
+        }
+     });
+    
+     /**
+     * @class Ext.ux.Media.plugin.AudioEvents
+     * @extends Ext.ux.Media.Component
+     * @version 1.0
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     * @constructor
+     * @param {Object} config The config object
+     */
+    Ext.ux.Media.plugin.AudioEvents = Ext.extend(Ext.ux.Media.Component,{
+    
+       autoEl  : {tag:'div' },
+       
+       cls: 'x-hide-offsets',
+       
+       disableCaching : false,
+       
+       /**
+        * @cfg {Object} audioEvents An object hash mapping URL of audio resources to
+        * DOM Ext.Element or Ext.util.Observable events.
+        * @example
+        *  
+        */
+       audioEvents : {},
+       
+       /**
+        * @cfg {Float} volume Desired Volume level in the range (0.0 - 1)
+        * 
+        */
+       volume     : .5,
+       
+       ptype      : 'audioevents',
+       
+       /** @private
+        * 
+        */
+       initComponent : function(){
+          this.mediaCfg || (this.mediaCfg = {
+              mediaType : 'WAV',
+              start     : true,
+              url       : ''
+          });
+          Ext.ux.Media.plugin.AudioEvents.superclass.initComponent.apply(this,arguments);
+          
+          this.addEvents(
+          /**
+            * Fires immediately preceeding an Audio Event. Returning false within this handler
+            * cancels the audio playback.
+            * @event beforeaudio
+            * @memberOf Ext.ux.Media.plugin.AudioEvents
+            * @param {Object} plugin This Media plugin instance.
+            * @param {Ext.Component/Ext.Element} target The target Ext.Component or Ext.Element instance.
+            * @param {String} eventName The eventName linked to the Audio stream.
+           */
+           'beforeaudio');
+           
+           this.setVolume(this.volume);
+       },
+       
+       /** @private
+        * 
+        */
+       init : function( target ){
+        
+            this.rendered || this.render(Ext.getBody());
+            
+            if(target.dom || target.ctype){
+                var plugin = this;
+                Ext.iterate(this.audioEvents || {}, 
+                 function(event){
+                   /* if the plugin init-target is an Observable, 
+                    * assert the eventName, exiting if not defined
+                    */
+                    if(target.events && !target.events[event]) return;
+                    
+                    /**
+                     * Mixin Audio Management methods to the target
+                     */
+                    Ext.applyIf(target, {
+                       audioPlugin : plugin,
+                       audioListeners : {},
+                       
+                       /**
+                        * @method removeAudioListener 
+                        * 
+                        */
+                       removeAudioListener : function(audioEvent){
+                          if(audioEvent && this.audioListeners[audioEvent]){ 
+                               this.removeListener && 
+                                 this.removeListener(audioEvent, this.audioListeners[audioEvent], this);
+                               delete this.audioListeners[audioEvent];
+                          }
+                       },
+                       /**
+                        * Removes all Audio Listeners from the Element or Component
+                        * @method removeAudioListeners
+                        */
+                       removeAudioListeners : function(){
+                          var c = [];
+                          Ext.iterate(this.audioListeners, function(audioEvent){c.push(audioEvent)});
+                          Ext.iterate(c, this.removeAudioListener, this);
+                       },
+                       
+                       addAudioListener : function(audioEvent){
+                           if(this.audioListeners[audioEvent]){
+                               this.removeAudioListener(audioEvent);
+                           }
+                           this.addListener && 
+                             this.addListener (audioEvent, 
+                               this.audioListeners[audioEvent] = function(){
+                               this.audioPlugin.onEvent(this, audioEvent);
+                             }, this);
+                        
+                       } ,
 
+                       enableAudio : function(){
+                          this.audioPlugin && this.audioPlugin.enable();
+                       },
+                       
+                       disableAudio : function(){
+                          this.audioPlugin && this.audioPlugin.disable();
+                       },
+                       
+                       setVolume : function(volume){
+                          this.audioPlugin && this.audioPlugin.setVolume(volume);
+                       }
+                    });
+                    
+                    target.addAudioListener(event);
+                    
+                },this);
+            }
+       },
+       
+       /**
+        * @param {Float} volume The volume (range 0-1)
+        * @return {Object} this
+        */
+       setVolume   : function(volume){
+            var AO = this.audioObject, v = Math.max(Math.min(parseFloat(volume)||0, 1),0);
+            this.mediaCfg && (this.mediaCfg.volume = v*100);
+            this.volume = v;
+            AO && (AO.volume = v);
+            return this;
+       },
+       
+       /**
+        * @private
+        */
+       onEvent : function(comp, event){
+           if(!this.disabled && this.audioEvents && this.audioEvents[event]){
+              if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
+                  this.mediaCfg.url = this.audioEvents[event];
+
+                  if(CAPS.object){  //HTML5 Audio support?
+                        this.audioObject && this.audioObject.stop && this.audioObject.stop();
+                        if(this.audioObject = new Audio(this.mediaCfg.url || '')){
+                            this.setVolume(this.volume);
+                            this.audioObject.play && this.audioObject.play();
+                        }
+                  } else {
+                        var O = this.getInterface();
+                        if(O){ 
+                            if(O.object){  //IE ActiveX
+                                O= O.object;
+	                            ('Open' in O) && O.Open(this.mediaCfg.url || '');
+	                            ('Play' in O) && O.Play();
+                            }else {  //All Others - just rerender the tag
+                                this.refreshMedia();      
+                            }
+                            
+                        }
+                  }
+              }
+              
+           }
+       }
+    
+    });
+    
+    Ext.preg && Ext.preg('audioevents', Ext.ux.Media.plugin.AudioEvents);
 
     Ext.onReady(function(){
         //Generate CSS Rules if not defined in markup
@@ -835,155 +1102,39 @@
 
     });
 
-
-
-    Ext.override(Ext.Element, {
-
-         /**
-          * Puts a mask over the element to disable user interaction. Requires core.css.
-          * @param {String} msg (optional) A message to display in the mask
-          * @param {String} msgCls (optional) A css class to apply to the msg element
-          * @return {Element} The mask element
-          */
-         mask : function(msg, msgCls){
-
-              if(this.getStyle("position") == "static"){
-                  this.addClass("x-masked-relative");
-              }
-
-             this._mask ||
-                 (this._mask = Ext.DomHelper.append(this.dom, {cls:"ext-el-mask"}, true));
-
-
-             if(!this.select('iframe,frame,object,embed').elements.length){
-                 this.addClass("x-masked");  //causes element re-init after reflow (overflow:hidden)
-             }
-
-             //may have been hidden previously (and not removed)
-             this._mask.setDisplayed(true)//.removeClass("x-hide-offsets");
-
-             if(typeof msg == 'string'){
-                  this._maskMsg || (this._maskMsg = Ext.DomHelper.append(this.dom, {style:"visibility:hidden",cls:"ext-el-mask-msg", cn:{tag:'div'}}, true));
-                  var mm = this._maskMsg;
-                  mm.dom.className = msgCls ? "ext-el-mask-msg " + msgCls : "ext-el-mask-msg";
-                  mm.dom.firstChild.innerHTML = msg;
-                  mm.center(this).setVisible(true);
-             }
-
-             //Adjust Mask Height for IE strict
-             if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
-                  //see: http://www.extjs.com/forum/showthread.php?p=252925#post252925
-                  this._mask.setHeight(this.getHeight());
-             }
-             return this._mask;
-         },
-
-         /**
-          * Removes a previously applied mask.
-          */
-         unmask : function(remove){
-
-            if(this._maskMsg ){
-
-                this._maskMsg.setVisible(false);
-                if(remove){
-                    this._maskMsg.remove(true);
-                    delete this._maskMsg;
-                 }
-            }
-
-            if(this._mask ) {
-                 this._mask.setDisplayed(false);
-                 if(remove){
-                     this._mask.remove(true);
-                     delete this._mask;
-                 }
-             }
-
-             this.removeClass(["x-masked", "x-masked-relative"]);
-
-         },
-
-        /**
-          * Removes this element from the DOM and deletes it from the cache
-          * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
-          * @param {Boolean} deep (optional) Perform a deep cleanse of all nested childNodes as well.
-          */
-
-        remove : function(cleanse, deep){
-              if(this.dom){
-                this.unmask(true);
-                this.removeAllListeners();    //remove any Ext-defined DOM listeners
-                if(cleanse){ this.cleanse(true, deep); }
-                Ext.removeNode(this.dom);
-                this.dom = null;  //clear ANY DOM references
-              }
-         },
-
-        /**
-         * Deep cleansing childNode Removal
-         * @param {Boolean} forceReclean (optional) By default the element
-         * keeps track if it has been cleansed already so
-         * you can call this over and over. However, if you update the element and
-         * need to force a reclean, you can pass true.
-         * @param {Boolean} deep (optional) Perform a deep cleanse of all childNodes as well.
-         */
-        cleanse : function(forceReclean, deep){
-            if(this.isCleansed && forceReclean !== true){
-                return this;
-            }
-
-            var d = this.dom, n = d.firstChild, nx;
-             while(d && n){
-                 nx = n.nextSibling;
-                 if(deep){
-                         Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
-                         }
-                 Ext.removeNode(n);
-                 n = nx;
-             }
-             delete Ext.Element._flyweights['_cleanser']; //orphan reference cleanup
-             this.isCleansed = true;
-             return this;
-         }
-    });
-
     /**
      * @class Ext.ux.Media.Element
      * @extends Ext.Element
-     * @version 2.1
+     * @version 2.2
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      * @constructor
      */
+    
     Ext.ux.Media.Element = Ext.extend ( Ext.Element , {
-
-        visibilityMode  : 'x-hide-nosize',
+    
         /**
         * @private
         */
         constructor   : function( element ) {
-
-            if(!element ){ return null; }
-
-            var dom = typeof element == "string" ? d.getElementById(element) : element.dom || element ;
-
-            if(!dom ){ return null; }
-
-            /**
-             * The DOM element
-             * @type HTMLElement
+            
+            Ext.ux.Media.Element.superclass.constructor.apply(this, arguments);
+           
+            /*
+             * Ext.get does not re-assert the current Element class in the cache
+             * so it be updated manually
              */
-            this.dom = dom;
-            /**
-             * The DOM element ID
-             * @type String
-             */
-            this.id = dom.id || Ext.id(dom);
-
-            Ext.Element.cache[this.id] = this;
+            if(Ext.elCache){  //Ext 3.1 compat
+                Ext.elCache[this.id] || (Ext.elCache[this.id] = {
+                    events : {},
+                    data : {}
+                });
+                Ext.elCache[this.id].el = this;
+            }else {
+                Ext.Element.cache[this.id] = this;
+            }
 
         },
 
@@ -1009,8 +1160,22 @@
                 this.maskEl.unmask(remove);
                 this.maskEl = null;
             }
-        }
+        },
+        
+        /**
+          * Removes this element from the DOM and deletes it from the cache
+          * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
+          * @param {Boolean} deep (optional) Perform a deep cleanse of all nested childNodes as well.
+          */
 
+        remove : function(cleanse, deep){
+              if(this.dom){
+                this.unmask(true);
+                this.removeAllListeners();    //remove any Ext-defined DOM listeners
+                Ext.ux.Media.Element.superclass.remove.apply(this,arguments);
+                this.dom = null;  //clear ANY DOM references
+              }
+         }
 
     });
 
@@ -1028,7 +1193,7 @@
      */
     Ext.ux.IntelliMask = function(el, config){
 
-        Ext.apply(this, config);
+        Ext.apply(this, config || {msg : this.msg});
         this.el = Ext.get(el);
 
     };
@@ -1120,7 +1285,7 @@
             var opt={}, autoHide = this.autoHide;
             fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
 
-            if(typeof msg == 'object'){
+            if(Ext.isObject(msg)){
                 opt = msg;
                 msg = opt.msg;
                 msgCls = opt.msgCls;
@@ -1175,10 +1340,90 @@
 /**
  * @namespace Ext.ux.Media.mediaTypes
  */
-Ext.ux.Media.mediaTypes =
-     {
+Ext.ux.Media.mediaTypes = {
+
+     /**
+     * @namespace Ext.ux.Media.mediaTypes.WAV
+     * @desc Generic WAV
+     */
+       
+      WAV : 
+            Ext.apply(
+            { tag      : 'object'
+             ,cls      : 'x-media x-media-wav'
+             ,data      : "@url"
+             ,type     : 'audio/x-wav'
+             ,loop  : false
+             ,params  : {
+
+                  filename     : "@url"
+                 ,displaysize  : 0
+                 ,autostart    : '@start'
+                 ,showControls : '@controls'
+                 ,showStatusBar:  false
+                 ,showaudiocontrols : '@controls'
+                 ,stretchToFit  : false
+                 ,Volume        : "@volume"
+                 ,PlayCount     : 1
+
+               }
+           },Ext.isIE?{
+               classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
+               ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+               ,type:'application/x-oleobject'
+               }:
+               {src:"@url"}),
+    
         /**
          * @namespace Ext.ux.Media.mediaTypes.PDF
+         *  OLE-TLB public IAcroAXDocShim interface (available on IE only)
+         *  
+    function LoadFile(const fileName: WideString): WordBool;
+    procedure setShowToolbar(On_: WordBool);
+    procedure gotoFirstPage;
+    procedure gotoLastPage;
+    procedure gotoNextPage;
+    procedure gotoPreviousPage;
+    procedure setCurrentPage(n: Integer);
+    procedure goForwardStack;
+    procedure goBackwardStack;
+    procedure setPageMode(const pageMode: WideString);
+    procedure setLayoutMode(const layoutMode: WideString);
+    procedure setNamedDest(const namedDest: WideString);
+    procedure printAll;
+    procedure Print;
+    procedure printWithDialog;
+    procedure setZoom(percent: Single);
+    procedure setZoomScroll(percent: Single; left: Single; top: Single);
+    procedure setView(const viewMode: WideString);
+    procedure setViewScroll(const viewMode: WideString; offset: Single);
+    procedure AboutBox;
+    procedure printPages(from: Integer; to_: Integer);
+    procedure printPagesFit(from: Integer; to_: Integer; shrinkToFit: WordBool);
+    procedure setViewRect(left: Single; top: Single; width: Single; height: Single);
+    procedure printAllFit(shrinkToFit: WordBool);
+    procedure setShowScrollbars(On_: WordBool);
+    property  ControlInterface: _DPdf read GetControlInterface;
+    property  DefaultInterface: _DPdf read GetControlInterface;
+  published
+    property Anchors;
+    property  TabStop;
+    property  Align;
+    property  DragCursor;
+    property  DragMode;
+    property  ParentShowHint;
+    property  PopupMenu;
+    property  ShowHint;
+    property  TabOrder;
+    property  Visible;
+    property  OnDragDrop;
+    property  OnDragOver;
+    property  OnEndDrag;
+    property  OnEnter;
+    property  OnExit;
+    property  OnStartDrag;
+    property src: WideString index 1 read GetWideStringProp write SetWideStringProp stored False;
+  end;
          */
 
        PDF : Ext.apply({  //Acrobat plugin thru release 8.0 all crash FF3
@@ -1187,8 +1432,7 @@ Ext.ux.Media.mediaTypes =
                ,type    : "application/pdf"
                ,data    : "@url"
                ,autoSize:true
-               ,params  : { src : "@url" }
-
+               ,params  : { src : "@url"}
                },Ext.isIE?{
                    classid :"CLSID:CA8A9780-280D-11CF-A24D-444553540000"
                    }:false),
@@ -1244,11 +1488,11 @@ Ext.ux.Media.mediaTypes =
                  IsRemote:false</code></pre>
         */
 
-
       WMV : Ext.apply(
               {tag      :'object'
               ,cls      : 'x-media x-media-wmv'
               ,type     : 'application/x-mplayer2'
+              //,type   : "video/x-ms-wmv"
               ,data     : "@url"
               ,autoSize : true
               ,params  : {
@@ -1266,16 +1510,41 @@ Ext.ux.Media.mediaTypes =
                }
                },Ext.isIE?{
                    classid :"CLSID:22d6f312-b0f6-11d0-94ab-0080c74c7e95" //default for WMP installed w/Windows
-                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "http://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
+                   ,codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://activex.microsoft.com/activex/controls/mplayer/en/nsmp2inf.cab#Version=5,1,52,701"
                    ,type:'application/x-oleobject'
                    }:
-                   {src:"@url"}),
+               {src:"@url"}
+             ),
+       /**
+       * @namespace Ext.ux.Media.mediaTypes.APPLET
+       */            
+       APPLET  : {
+                  tag      :'object'
+                 ,cls      : 'x-media x-media-applet'
+                 ,type     : 'application/x-java-applet'
+                 ,unsupportedText : {tag : 'p', html:'Java is not installed/enabled.'}
+                 ,params : {
+                   url : '@url',
+                   archive : '',  //the jar file
+                   code    : '' //the Java class
+                  }
+       },
+       
+       "AUDIO-OGG"   : {
+           tag      : 'audio',
+           controls : '@controls',
+           src      : '@url'
+       },
+       
+       "VIDEO-OGG"   : {
+           tag      : 'video',
+           controls : '@controls',
+           src      : '@url'
+       },
 
      /**
        * @namespace Ext.ux.Media.mediaTypes.SWF
        */
-
-
        SWF   :  Ext.apply({
                   tag      :'object'
                  ,cls      : 'x-media x-media-swf'
@@ -1300,9 +1569,44 @@ Ext.ux.Media.mediaTypes =
 
                 },Ext.isIE?
                     {classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
-                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0"
+                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,0,0"
                     }:
                     {data     : "@url"}),
+      /**
+       * @namespace Ext.ux.Media.mediaTypes.SCRIBD
+       * sample url : http://documents.scribd.com/ScribdViewer.swf?document_id=502727&access_key=cwy7bk66jc0l&page=1&version=1&viewMode=
+       */
+       SCRIBD :  Ext.apply({
+                  tag      :'object'
+                 ,cls      : 'x-media x-media-scribd'
+                 ,type     : 'application/x-shockwave-flash'
+                 ,scripting: 'always'
+                 ,standby  : 'Loading..'
+                 ,loop     :  true
+                 ,start    :  false
+                 ,unsupportedText : {cn:['The Adobe Flash Player is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]}
+                 ,params   : {
+                      movie     : "@url"
+                     ,menu      : "@controls"
+                     ,play      : "@start"
+                     ,quality   : "high"
+                     ,menu      : true
+                     ,scale     : 'showall'
+                     ,salign    : ' '
+                     ,allowscriptaccess : "@scripting"
+                     ,allownetworking : 'all'
+                     ,allowfullScreen : true
+                     ,bgcolor   : "#FFFFFF"
+                     ,wmode     : "opaque"
+                     ,loop      : "@loop"
+                    }
+
+                },Ext.isIE?
+                    {classid :"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000",
+                     codebase:"http" + ((Ext.isSecure) ? 's' : '') + "://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,0,0"
+                    }:
+                    {data     : "@url"}),
+                    
       /**
        * @namespace Ext.ux.Media.mediaTypes.JWP
        * @see http://code.jeroenwijering.com/trac/wiki/FlashAPI
@@ -1336,7 +1640,7 @@ Ext.ux.Media.mediaTypes =
 
         /**
          * @namespace Ext.ux.Media.mediaTypes.QT
-         * @desc QT references: http://developer.apple.com/documentation/quicktime/Conceptual/QTScripting_JavaScript/aQTScripting_Javascro_AIntro/chapter_1_section_1.html
+         * @desc QT references: http://developer.apple.com/mac/library/documentation/QuickTime/Conceptual/QTScripting_HTML/QTScripting_HTML_Document/ScriptingHTML.html
          */
         QT : Ext.apply({
                        tag      : 'object'
@@ -1346,7 +1650,7 @@ Ext.ux.Media.mediaTypes =
                       ,scale    : 'aspect'  // ( .5, 1, 2 , ToFit, Aspect )
                       ,unsupportedText : '<a href="http://www.apple.com/quicktime/download/">Get QuickTime</a>'
                       ,scripting : true
-                      ,volume   : '50%'
+                      ,volume   : '50%'   //also 0-255
                       ,data     : '@url'
                       ,params   : {
                            src          : Ext.isIE?'@url': null
@@ -1424,25 +1728,29 @@ Ext.ux.Media.mediaTypes =
         /**
          * @namespace Ext.ux.Media.mediaTypes.REAL
          * @desc Real Player
+         * Parameter Reference for Real Player: http://service.real.com/help/library/guides/extend/htmfiles/appc_par.htm
          */
 
         REAL : Ext.apply({
                 tag     :'object'
                ,cls     : 'x-media x-media-real'
-               ,type    : "audio/x-pn-realaudio"
+               ,type    : "audio/x-pn-realaudio-plugin"
                ,data    : "@url"
-               ,controls: 'imagewindow,all'
-               ,start   : false
+               ,controls: 'all'
+               ,start   : -1
                ,standby : "Loading Real Media Player components..."
                ,params   : {
                           src        : "@url"
                          ,autostart  : "@start"
                          ,center     : false
                          ,maintainaspect : true
+                         ,prefetch   : false
                          ,controller : "@controls"
                          ,controls   : "@controls"
                          ,volume     :'@volume'
                          ,loop       : "@loop"
+                         ,numloop    : null
+                         ,shuffle    : false
                          ,console    : "_master"
                          ,backgroundcolor : '#000000'
                          }
@@ -1593,76 +1901,7 @@ Ext.ux.Media.mediaTypes =
              ,params  : { MinRuntimeVersion: "2.0" }
              ,unsupportedText: '<a href="http://go2.microsoft.com/fwlink/?LinkID=114576&v=2.0"><img style="border-width: 0pt;" alt="Get Microsoft Silverlight" src="http://go2.microsoft.com/fwlink/?LinkID=108181"/></a>'
         },
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.DATAVIEW
-         */
-
-        DATAVIEW : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-dataview'
-             ,classid  : 'CLSID:0ECD9B64-23AA-11D0-B351-00A0C9055D8E'
-             ,type     : 'application/x-oleobject'
-             ,unsupportedText: 'MS Dataview Control is not installed'
-
-        },
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.OWCXLS
-         */
-
-        "OWCXLS" : Ext.apply({     //experimental IE only
-              tag      : 'object'
-             ,cls      : 'x-media x-media-xls'
-             ,type      :"application/vnd.ms-excel"
-             ,controltype: "excel"
-             ,params  : { DataType : "CSVURL"
-                        ,CSVURL : '@url'
-                        ,DisplayTitleBar : true
-                        ,AutoFit         : true
-                     }
-             },Ext.isIE?{
-                   codebase: "file:msowc.cab"
-                  ,classid :"CLSID:0002E510-0000-0000-C000-000000000046" //owc9
-                 //classid :"CLSID:0002E550-0000-0000-C000-000000000046" //owc10
-                 //classid :"CLSID:0002E559-0000-0000-C000-000000000046" //owc11
-
-                 }:false),
-
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.OWCCHART
-         */
-
-        "OWCCHART" : Ext.apply({     //experimental
-              tag      : 'object'
-             ,cls      : 'x-media x-media-xls'
-             ,type      :"application/vnd.ms-excel"
-             ,data     : "@url"
-             ,params  : { DataType : "CSVURL" }
-             },Ext.isIE?{
-                    classid :"CLSID:0002E500-0000-0000-C000-000000000046" //owc9
-                  //classid :"CLSID:0002E556-0000-0000-C000-000000000046" //owc10
-                  //classid :"CLSID:0002E55D-0000-0000-C000-000000000046" //owc11
-                 }:false),
-
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.OFFICE
-         */
-
-        OFFICE : {
-              tag      : 'object'
-             ,cls      : 'x-media x-media-office'
-             ,type      :"application/x-msoffice"
-             ,data     : "@url"
-        },
-        /**
-         * @namespace Ext.ux.Media.mediaTypes.POWERPOINT
-         */
-
-        POWERPOINT : Ext.apply({     //experimental
-                      tag      : 'object'
-                     ,cls      : 'x-media x-media-ppt'
-                     ,type     :"application/vnd.ms-powerpoint"
-                     ,file     : "@url"
-                     },Ext.isIE?{classid :"CLSID:EFBD14F0-6BFB-11CF-9177-00805F8813FF"}:false),
+ 
         /**
          * @namespace Ext.ux.Media.mediaTypes.XML
          */
@@ -1682,8 +1921,7 @@ Ext.ux.Media.mediaTypes =
         VLC : Ext.apply({
               tag      : 'object'
              ,cls      : 'x-media x-media-vlc'
-             ,type     : "application/x-vlc-plugin"
-             ,version  : "VideoLAN.VLCPlugin.2"
+             ,type     : "application/x-google-vlc-plugin"
              ,pluginspage:"http://www.videolan.org"
              ,events   : true
              ,start    : false
@@ -1698,38 +1936,90 @@ Ext.ux.Media.mediaTypes =
                 }
 
              },Ext.isIE?{
-                  classid :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
-                 ,CODEBASE :"http://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
-             }:false),
+                  classid     :"clsid:9BE31822-FDAD-461B-AD51-BE1D1C159921"
+                 ,CODEBASE    :"http" + ((Ext.isSecure) ? 's' : '') + "://downloads.videolan.org/pub/videolan/vlc/latest/win32/axvlc.cab"
+             }:{target : '@url'}),
+             
         /**
-         * @namespace Ext.ux.Media.mediaTypes.RDP
+         * @namespace Ext.ux.Media.mediaTypes.ODT
+         * Open Office 2.0+ ODT  Text Document
+         * <SCRIPT TYPE="text/javascript">
+
+function DoThePrint() {
+  SvcMgr =new ActiveXObject('com.sun.star.ServiceManager');
+  Desktop = SvcMgr.CreateInstance('com.sun.star.frame.Desktop');
+  oEnum = Desktop.getComponents().createEnumeration();
+  for (;oEnum.hasMoreElements()==true;) {
+    oo = oEnum.nextElement()
+    if (oo.supportsService("com.sun.star.text.TextDocument")==true) ooDoc = oo;
+  }
+  alert(ooDoc.getUrl()); //if you embed many OO text objects, test here for the src in the OBJECT ...
+
+  oFrame     = ooDoc.CurrentController.Frame
+  dispatcher = SvcMgr.CreateInstance("com.sun.star.frame.DispatchHelper")
+  dispatcher.executeDispatch(oFrame, ".uno:print", "", 0, Array()) 
+}
+
+ 
+</SCRIPT>
+Simple Print
+ ooDoc.print( Array() );
+         * 
          */
-
-         RDP : Ext.apply({
+        
+        ODT : Ext.apply({
               tag      : 'object'
-             ,cls      : 'x-media x-media-rdp'
-             ,type     : "application/rds"
-             ,unsupportedText: "Remote Desktop Web Connection ActiveX control is required. <a target=\"_msd\" href=\"http://go.microsoft.com/fwlink/?linkid=44333\">Download it here</a>."
-             ,params:{
-                  Server         : '@url'
-                 ,Fullscreen     : false
-                 ,StartConnected : false
-                 ,DesktopWidth   : '@width'
-                 ,DesktopHeight  : '@height'
-             }
-
-         },Ext.isIE?{
-             classid :"CLSID:9059f30f-4eb1-4bd2-9fdc-36f43a218f4a"
-            ,CODEBASE :"msrdp.cab#version=5,2,3790,0"
-
-
-         }:false)
-
+             ,cls      : 'x-media x-media-odt'
+             ,type     : "application/vnd.oasis.opendocument.text"
+             ,data     : "@url"
+             ,params   : {
+                   src        : '@url'
+                } 
+             },Ext.isIE?{
+                  classid     :"clsid:67F2A879-82D5-4A6D-8CC5-FFB3C114B69D"
+             }:false),
+        
+        /**
+         * @namespace Ext.ux.Media.mediaTypes.ODS
+         * Open Office 2.0+ ODS  Spreadsheet
+         */
+             
+        ODS : Ext.apply({
+              tag      : 'object'
+             ,cls      : 'x-media x-media-odt'
+             ,type     : "application/vnd.oasis.opendocument.spreadsheet"
+             ,data     : "@url"
+             ,params   : {
+                   src        : '@url' 
+                }
+             },Ext.isIE?{
+                  classid     :"clsid:67F2A879-82D5-4A6D-8CC5-FFB3C114B69D"
+             }:false),
+             
+         /**
+         * @namespace Ext.ux.Media.mediaTypes.ODS
+         * Open Office 2.0+ ODS  Spreadsheet
+         */
+             
+        IMPRESS : Ext.apply({
+              tag      : 'object'
+             ,cls      : 'x-media x-media-sxi'
+             ,start    : false
+             ,type     : "application/vnd.sun.xml.impress"
+             ,data     : "@url"
+             ,params   : {
+                   wmode      : 'transparent',
+                   src        : Ext.isIE ? '@url' : null
+                }
+             },Ext.isIE?{
+                  classid     :"clsid:67F2A879-82D5-4A6D-8CC5-FFB3C114B69D"
+                 
+             }:{
+               data     : "@url"
+              
+             }) 
+ 
     };
-
-
-
-
 
 if (Ext.provide) {
     Ext.provide('uxmedia');
@@ -1757,7 +2047,16 @@ Ext.applyIf(Array.prototype, {
     }
 });
 
-
+/*
+ * My.Window = Ext.extendX(Ext.Window, function(supr){
+    return {
+        initComponent : function(){
+            this.foo = 1;
+            supr.initComponent.call(this);
+        }
+    }                
+});
+ */
 
 /* Previous Release compatability: */
 
