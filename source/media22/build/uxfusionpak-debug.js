@@ -452,6 +452,7 @@
               var mc = (this.mediaCfg = mediaCfg || this.mediaCfg) ;
               ct = Ext.get(this.lastCt || ct || (this.mediaObject?this.mediaObject.dom.parentNode:null));
               this.onBeforeMedia.call(this, mc, ct, domPosition , w , h);
+              
               if(ct){
                   this.lastCt = ct;
                   if(mc && (mc = this.prepareMedia(mc, w, h, ct))){
@@ -465,10 +466,11 @@
 
           
           writeMedia : function(mediaCfg, container, domPosition ){
-              var ct = Ext.get(container);
+              var ct = Ext.get(container), markup;
               if(ct){
-                domPosition ? Ext.DomHelper.insertHtml(domPosition,ct.dom,this.mediaMarkup(mediaCfg))
-                  :ct.update(this.mediaMarkup(mediaCfg));
+                markup = this.mediaMarkup(mediaCfg)
+                domPosition ? Ext.DomHelper.insertHtml(domPosition, ct.dom, markup)
+                  :ct.update(markup);
               }
           },
 
@@ -483,15 +485,14 @@
           },
 
            
-          resizeMedia   : function(comp, w, h){
+          resizeMedia   : function(comp, aw, ah, w, h){
               var mc = this.mediaCfg;
-              if(mc && this.boxReady && mc.renderOnResize && (!!w || !!h)){
+              if(mc && this.rendered && mc.renderOnResize && (!!aw || !!ah)){
                   // Ext.Window.resizer fires this event a second time
                   if(arguments.length > 3 && (!this.mediaObject || mc.renderOnResize )){
                       this.refreshMedia(this[this.mediaEl]);
                   }
               }
-
           },
 
           
@@ -609,30 +610,19 @@
 
                 'mediaload');
 
-            if(this.mediaCfg.renderOnResize ){
-                this.on('resize', this.resizeMedia, this);
-            }
-
-
         },
+        
         afterRender  : function(ct){
-
             //set the mediaMask
             this.setMask(this[this.mediaEl] || ct);
-            
             componentAdapter.setAutoScroll.call(this);
-            
-            if(!this.mediaCfg.renderOnResize ){
-                this.renderMedia(this.mediaCfg,this[this.mediaEl] || ct);
-            }
-
+            this.renderMedia(this.mediaCfg, this[this.mediaEl]);
         },
         
         beforeDestroy  :  function(){
             this.clearMedia();
             Ext.destroy(this.mediaMask, this.loadMask);
             this.lastCt = this.mediaObject = this.renderTo = this.applyTo = this.mediaMask = this.loadMask = null;
-
         },
          
         setAutoScroll   : function(){
@@ -643,6 +633,12 @@
         
         getContentTarget : function(){
             return this[this.mediaEl];
+        },
+        
+        onResize : function(){
+            if(this.mediaObject && this.mediaCfg.renderOnResize){
+                this.refreshMedia();
+            }
         }
     };
 
@@ -686,7 +682,9 @@
         
         getContentTarget : componentAdapter.getContentTarget,
         //Ext 2.x does not have Box setAutoscroll
-        setAutoScroll : componentAdapter.setAutoScroll
+        setAutoScroll : componentAdapter.setAutoScroll,
+        
+        onResize : componentAdapter.onResize
         
     });
 
@@ -733,7 +731,9 @@
         
         getContentTarget : componentAdapter.getContentTarget,
 
-        setAutoScroll : componentAdapter.setAutoScroll
+        setAutoScroll : componentAdapter.setAutoScroll,
+        
+        onResize : componentAdapter.onResize
 
     });
 
@@ -797,7 +797,9 @@
         
         getContentTarget : componentAdapter.getContentTarget,
 
-        setAutoScroll : componentAdapter.setAutoScroll
+        setAutoScroll : componentAdapter.setAutoScroll,
+        
+        onResize : componentAdapter.onResize
 
     });
 
@@ -2875,9 +2877,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
            if( immediate !== false && (o = this.getInterface())){
 
               if( 'setDataXML' in o ){
-
                    o.setDataXML(xml);
-
               } else { //FC Free Interface
                    this.setVariable("_root.dataURL","");
                    //Set the flag
@@ -2898,9 +2898,8 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
        
        setChartDataURL  : function(url, immediate){
           var o;
-
           this.dataURL = url;
-          if((o = this.getInterface()) && immediate !== false){
+          if(immediate !== false && (o = this.getInterface())){
               'setDataURL' in o ?
                  o.setDataURL(url) :
                    //FusionCharts Free has no support for dynamic loading of URLs
