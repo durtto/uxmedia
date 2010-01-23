@@ -315,9 +315,7 @@
            if( immediate !== false && (o = this.getInterface())){
 
               if( 'setDataXML' in o ){
-
                    o.setDataXML(xml);
-
               } else { //FC Free Interface
                    this.setVariable("_root.dataURL","");
                    //Set the flag
@@ -343,9 +341,8 @@
        */
        setChartDataURL  : function(url, immediate){
           var o;
-
           this.dataURL = url;
-          if((o = this.getInterface()) && immediate !== false){
+          if(immediate !== false && (o = this.getInterface())){
               'setDataURL' in o ?
                  o.setDataURL(url) :
                    //FusionCharts Free has no support for dynamic loading of URLs
