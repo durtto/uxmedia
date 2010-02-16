@@ -675,7 +675,10 @@
         //Ext 2.x does not have Box setAutoscroll
         setAutoScroll : componentAdapter.setAutoScroll,
         
-        onResize : componentAdapter.onResize
+        onResize : function(){
+            ux.Component.superclass.onResize.apply(this,arguments);
+            componentAdapter.onResize.apply(this,arguments);
+        }
         
     });
 
@@ -738,7 +741,10 @@
 
         setAutoScroll : componentAdapter.setAutoScroll,
         
-        onResize : componentAdapter.onResize
+        onResize : function(){
+            ux.Panel.superclass.onResize.apply(this,arguments);
+            componentAdapter.onResize.apply(this,arguments);
+        }
 
     });
 
@@ -828,7 +834,10 @@
 
         setAutoScroll : componentAdapter.setAutoScroll,
         
-        onResize : componentAdapter.onResize
+        onResize : function(){
+            ux.Window.superclass.onResize.apply(this,arguments);
+            componentAdapter.onResize.apply(this,arguments);
+        }
 
     });
 
