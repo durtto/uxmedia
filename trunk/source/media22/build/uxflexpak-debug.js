@@ -1,6 +1,6 @@
 /*
  * ux.Media.Flex 2.1.3
- * Copyright(c) 2008-2009, Active Group, Inc.
+ * Copyright(c) 2008-2010, Active Group, Inc.
  * licensing@theactivegroup.com
  * 
  * http://licensing.theactivegroup.com
@@ -65,7 +65,7 @@
 				  }
 				
 				  var p = this.dom.parentNode,
-                      bodyRE = /body/i;
+                      bodyRE = /^body/i;
 				
 				  while (p && !bodyRE.test(p.tagName)) {
 				    if (!Ext.fly(p, '_isVisible').isVisible()) {
@@ -684,7 +684,10 @@
         //Ext 2.x does not have Box setAutoscroll
         setAutoScroll : componentAdapter.setAutoScroll,
         
-        onResize : componentAdapter.onResize
+        onResize : function(){
+            ux.Component.superclass.onResize.apply(this,arguments);
+            componentAdapter.onResize.apply(this,arguments);
+        }
         
     });
 
@@ -733,7 +736,10 @@
 
         setAutoScroll : componentAdapter.setAutoScroll,
         
-        onResize : componentAdapter.onResize
+        onResize : function(){
+            ux.Panel.superclass.onResize.apply(this,arguments);
+            componentAdapter.onResize.apply(this,arguments);
+        }
 
     });
 
@@ -799,7 +805,10 @@
 
         setAutoScroll : componentAdapter.setAutoScroll,
         
-        onResize : componentAdapter.onResize
+        onResize : function(){
+            ux.Window.superclass.onResize.apply(this,arguments);
+            componentAdapter.onResize.apply(this,arguments);
+        }
 
     });
 
