@@ -845,33 +845,8 @@
 
     Ext.ns('Ext.capabilities');
     Ext.ns('Ext.ux.Media.plugin');
-    /**
-     * Check Basic HTML5 Element support for the <audio> tag and/or Audio object.
-     */
-    var CAPS = (Ext.capabilities.hasAudio || 
-       (Ext.capabilities.hasAudio = function(){
+    
                 
-                var aTag = !!document.createElement('audio').canPlayType,
-                    aAudio = ('Audio' in window) ? new Audio('') : {},
-                    caps = aTag || ('canPlayType' in aAudio) ? { tag : aTag, object : ('play' in aAudio)} : false,
-                    mime,
-                    chk,
-                    mimes = {
-                            mp3 : 'audio/mpeg', //mp3
-                            ogg : 'audio/ogg',  //Ogg Vorbis
-                            wav : 'audio/x-wav', //wav 
-                            basic : 'audio/basic', //au, snd
-                            aif  : 'audio/x-aiff' //aif, aifc, aiff
-                        };
-                    
-                    if(caps && ('canPlayType' in aAudio)){
-                       for (chk in mimes){ 
-                            caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
-                        }
-                    }                     
-                    return caps;
-            }()));
-            
      Ext.iterate || Ext.apply (Ext, {
         iterate : function(obj, fn, scope){
             if(Ext.isEmpty(obj)){
@@ -1065,7 +1040,7 @@
               if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
                   this.mediaCfg.url = this.audioEvents[event];
 
-                  if(CAPS.object){  //HTML5 Audio support?
+                  if(Ext.capabilities.hasAudio && Ext.capabilities.hasAudio.object){  //HTML5 Audio support?
                         this.audioObject && this.audioObject.stop && this.audioObject.stop();
                         if(this.audioObject = new Audio(this.mediaCfg.url || '')){
                             this.setVolume(this.volume);
@@ -1094,6 +1069,33 @@
     Ext.preg && Ext.preg('audioevents', Ext.ux.Media.plugin.AudioEvents);
 
     Ext.onReady(function(){
+        
+	    /**
+	     * Check Basic HTML5 Element support for the <audio> tag and/or Audio object.
+	     */
+        if(typeof Ext.capabilities.hasAudio == 'undefined'){
+	        var aTag = !!document.createElement('audio').canPlayType,
+	            aAudio = window.Audio ? new Audio('') : {},
+	            mime,
+	            chk,
+	            mimes = {
+	                    mp3 : 'audio/mpeg', //mp3
+	                    ogg : 'audio/ogg',  //Ogg Vorbis
+	                    wav : 'audio/x-wav', //wav 
+	                    basic : 'audio/basic', //au, snd
+	                    aif  : 'audio/x-aiff' //aif, aifc, aiff
+	                };
+	                
+            var caps = Ext.capabilities.hasAudio = (aTag || ('canPlayType' in aAudio) ? 
+                { tag : aTag, object : ('play' in aAudio)} : false);
+                
+            if(caps && ('canPlayType' in aAudio)){
+               for (chk in mimes){ 
+                    caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
+                }
+            } 
+        }        
+        
         //Generate CSS Rules if not defined in markup
         var CSS = Ext.util.CSS, rules=[];
 
