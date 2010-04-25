@@ -8,91 +8,91 @@
  * 
  */
 
-     
+ 
+
  Ext.namespace('Ext.ux.plugin');
  Ext.onReady(function(){
-    
+
    
     var CSS = Ext.util.CSS;
-    if(CSS){ 
+    if(CSS){
         CSS.getRule('.x-hide-nosize') || //already defined?
             CSS.createStyleSheet('.x-hide-nosize{height:0px!important;width:0px!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
         CSS.refreshCache();
     }
-    
+
 });
 
 (function(){
 
-      var El = Ext.Element, A = Ext.lib.Anim, supr = El.prototype; 
+      var El = Ext.Element, A = Ext.lib.Anim, supr = El.prototype;
       var VISIBILITY = "visibility",
         DISPLAY = "display",
         HIDDEN = "hidden",
         NONE = "none";
-        
+
       var fx = {};
-    
+
       fx.El = {
-	      	     
+
             
-	       setDisplayed : function(value) {
+           setDisplayed : function(value) {
                 var me=this;
                 me.visibilityCls ? (me[value !== false ?'removeClass':'addClass'](me.visibilityCls)) :
-	                supr.setDisplayed.call(me, value);
+                    supr.setDisplayed.call(me, value);
                 return me;
-	        },
+            },
+
             
+            isDisplayed : function() {
+                return !(this.hasClass(this.visibilityCls) || this.isStyle(DISPLAY, NONE));
+            },
+            // private
+            fixDisplay : function(){
+                var me = this;
+                supr.fixDisplay.call(me);
+                me.visibilityCls && me.removeClass(me.visibilityCls);
+            },
+
             
-	        isDisplayed : function() {
-	            return !(this.hasClass(this.visibilityCls) || this.isStyle(DISPLAY, NONE));
-	        },
-	        // private
-	        fixDisplay : function(){
-	            var me = this;
-	            supr.fixDisplay.call(me);
-                me.visibilityCls && me.removeClass(me.visibilityCls); 
-	        },
-	
-	        
-	        isVisible : function(deep) {
-	            var vis = this.visible ||
-				    (!this.isStyle(VISIBILITY, HIDDEN) && 
-                        (this.visibilityCls ? 
-                            !this.hasClass(this.visibilityCls) : 
+            isVisible : function(deep) {
+                var vis = this.visible ||
+                    (!this.isStyle(VISIBILITY, HIDDEN) &&
+                        (this.visibilityCls ?
+                            !this.hasClass(this.visibilityCls) :
                                 !this.isStyle(DISPLAY, NONE))
                       );
-				  
-				  if (deep !== true || !vis) {
-				    return vis;
-				  }
-				
-				  var p = this.dom.parentNode,
-                      bodyRE = /^body/i;
-				
-				  while (p && !bodyRE.test(p.tagName)) {
-				    if (!Ext.fly(p, '_isVisible').isVisible()) {
-				      return false;
-				    }
-				    p = p.parentNode;
-				  }
-				  return true;
 
-	        },
+                  if (deep !== true || !vis) {
+                    return vis;
+                  }
+
+                  var p = this.dom.parentNode,
+                      bodyRE = /^body/i;
+
+                  while (p && !bodyRE.test(p.tagName)) {
+                    if (!Ext.fly(p, '_isVisible').isVisible()) {
+                      return false;
+                    }
+                    p = p.parentNode;
+                  }
+                  return true;
+
+            },
             //Assert isStyle method for Ext 2.x
             isStyle: supr.isStyle || function(style, val) {
-			    return this.getStyle(style) == val;
-			}
+                return this.getStyle(style) == val;
+            }
 
-	    };
-        
-        //Add basic capabilities to the Ext.Element.Flyweight class
-        Ext.override(El.Flyweight, fx.El);
+        };
 
-     
+ //Add basic capabilities to the Ext.Element.Flyweight class
+ Ext.override(El.Flyweight, fx.El);
+
  Ext.ux.plugin.VisibilityMode = function(opt) {
 
     Ext.apply(this, opt||{});
-    
+
     var CSS = Ext.util.CSS;
 
     if(CSS && !Ext.isIE && this.fixMaximizedWindow !== false && !Ext.ux.plugin.VisibilityMode.MaxWinFixed){
@@ -100,7 +100,7 @@
         CSS.updateRule ( '.x-window-maximized-ct', 'overflow', '');
         Ext.ux.plugin.VisibilityMode.MaxWinFixed = true;  //only updates the CSS Rule once.
     }
-    
+
    };
 
 
@@ -111,7 +111,7 @@
 
       
       fixMaximizedWindow  :  true,
-     
+
       
 
       elements       :  null,
@@ -123,7 +123,7 @@
       
       hideMode  :   'nosize' ,
 
-      ptype     :  'uxvismode', 
+      ptype     :  'uxvismode',
       
       init : function(c) {
 
@@ -132,25 +132,25 @@
             bubble = Ext.Container.prototype.bubble,
             changeVis = function(){
 
-	            var els = [this.collapseEl, this.actionMode].concat(plugin.elements||[]);
-	
-	            Ext.each(els, function(el){
-		            plugin.extend( this[el] || el );
-	            },this);
-	
-	            var cfg = {
+                var els = [this.collapseEl, this.actionMode].concat(plugin.elements||[]);
+
+                Ext.each(els, function(el){
+                    plugin.extend( this[el] || el );
+                },this);
+
+                var cfg = {
                     visFixed  : true,
                     animCollapse : false,
                     animFloat   : false,
-		            hideMode  : hideMode,
-		            defaults  : this.defaults || {}
-	            };
-	
-	            cfg.defaults.hideMode = hideMode;
-	            
-	            Ext.apply(this, cfg);
-	            Ext.apply(this.initialConfig || {}, cfg);
-            
+                    hideMode  : hideMode,
+                    defaults  : this.defaults || {}
+                };
+
+                cfg.defaults.hideMode = hideMode;
+
+                Ext.apply(this, cfg);
+                Ext.apply(this.initialConfig || {}, cfg);
+
             };
 
          c.on('render', function(){
@@ -174,18 +174,18 @@
      
      extend : function(el, visibilityCls){
         el && Ext.each([].concat(el), function(e){
-            
-	        if(e && e.dom){
+
+            if(e && e.dom){
                  if('visibilityCls' in e)return;  //already applied or defined?
-	             Ext.apply(e, fx.El);
-	             e.visibilityCls = visibilityCls || this.visibilityCls;
-	        }
+                 Ext.apply(e, fx.El);
+                 e.visibilityCls = visibilityCls || this.visibilityCls;
+            }
         },this);
         return this;
      }
 
   });
-  
+
   Ext.preg && Ext.preg('uxvismode', Ext.ux.plugin.VisibilityMode );
   
   Ext.provide && Ext.provide('uxvismode');
@@ -819,30 +819,7 @@
     Ext.ns('Ext.capabilities');
     Ext.ns('Ext.ux.Media.plugin');
     
-    var CAPS = (Ext.capabilities.hasAudio || 
-       (Ext.capabilities.hasAudio = function(){
                 
-                var aTag = !!document.createElement('audio').canPlayType,
-                    aAudio = ('Audio' in window) ? new Audio('') : {},
-                    caps = aTag || ('canPlayType' in aAudio) ? { tag : aTag, object : ('play' in aAudio)} : false,
-                    mime,
-                    chk,
-                    mimes = {
-                            mp3 : 'audio/mpeg', //mp3
-                            ogg : 'audio/ogg',  //Ogg Vorbis
-                            wav : 'audio/x-wav', //wav 
-                            basic : 'audio/basic', //au, snd
-                            aif  : 'audio/x-aiff' //aif, aifc, aiff
-                        };
-                    
-                    if(caps && ('canPlayType' in aAudio)){
-                       for (chk in mimes){ 
-                            caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
-                        }
-                    }                     
-                    return caps;
-            }()));
-            
      Ext.iterate || Ext.apply (Ext, {
         iterate : function(obj, fn, scope){
             if(Ext.isEmpty(obj)){
@@ -991,7 +968,7 @@
               if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
                   this.mediaCfg.url = this.audioEvents[event];
 
-                  if(CAPS.object){  //HTML5 Audio support?
+                  if(Ext.capabilities.hasAudio && Ext.capabilities.hasAudio.object){  //HTML5 Audio support?
                         this.audioObject && this.audioObject.stop && this.audioObject.stop();
                         if(this.audioObject = new Audio(this.mediaCfg.url || '')){
                             this.setVolume(this.volume);
@@ -1020,6 +997,31 @@
     Ext.preg && Ext.preg('audioevents', Ext.ux.Media.plugin.AudioEvents);
 
     Ext.onReady(function(){
+        
+	    
+        if(typeof Ext.capabilities.hasAudio == 'undefined'){
+	        var aTag = !!document.createElement('audio').canPlayType,
+	            aAudio = window.Audio ? new Audio('') : {},
+	            mime,
+	            chk,
+	            mimes = {
+	                    mp3 : 'audio/mpeg', //mp3
+	                    ogg : 'audio/ogg',  //Ogg Vorbis
+	                    wav : 'audio/x-wav', //wav 
+	                    basic : 'audio/basic', //au, snd
+	                    aif  : 'audio/x-aiff' //aif, aifc, aiff
+	                };
+	                
+            var caps = Ext.capabilities.hasAudio = (aTag || ('canPlayType' in aAudio) ? 
+                { tag : aTag, object : ('play' in aAudio)} : false);
+                
+            if(caps && ('canPlayType' in aAudio)){
+               for (chk in mimes){ 
+                    caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
+                }
+            } 
+        }        
+        
         //Generate CSS Rules if not defined in markup
         var CSS = Ext.util.CSS, rules=[];
 
