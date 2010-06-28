@@ -1,5 +1,5 @@
 /*
- * ux.Media.Flex 2.1.3
+ * ux.Media.Flex 2.2
  * Copyright(c) 2008-2010, Active Group, Inc.
  * licensing@theactivegroup.com
  * 
@@ -511,11 +511,10 @@
                   m.height = this.autoHeight ? null : autoSizeEl.getHeight(true);
                   m.width  = this.autoWidth ? null : autoSizeEl.getWidth(true);
                 }
-
-             }
-             this.assert(m.height,height);
-             this.assert(m.width ,width);
-             mediaCfg = m;
+	             this.assert(m.height,height);
+	             this.assert(m.width ,width);
+	             mediaCfg = m;
+            }
 
           },
 
@@ -813,212 +812,8 @@
     });
 
     Ext.reg('mediawindow', ux.Window);
-
-    Ext.ns('Ext.capabilities');
-    Ext.ns('Ext.ux.Media.plugin');
-    
-                
-     Ext.iterate || Ext.apply (Ext, {
-        iterate : function(obj, fn, scope){
-            if(Ext.isEmpty(obj)){
-                return;
-            }
-            if(Ext.isIterable(obj)){
-                Ext.each(obj, fn, scope);
-                return;
-            }else if(Ext.isObject(obj)){
-                for(var prop in obj){
-                    if(obj.hasOwnProperty(prop)){
-                        if(fn.call(scope || obj, prop, obj[prop], obj) === false){
-                            return;
-                        };
-                    }
-                }
-            }
-        },
-        isIterable : function(v){
-            //check for array or arguments
-            if(Ext.isArray(v) || v.callee){
-                return true;
-            }
-            //check for node list type
-            if(/NodeList|HTMLCollection/.test(toString.call(v))){
-                return true;
-            }
-            //NodeList has an item and length property
-            //IXMLDOMNodeList has nextNode method, needs to be checked first.
-            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
-        },
-        
-        isObject : function(obj){
-            return !!obj && toString.apply(obj) == '[object Object]';
-        }
-     });
-    
-     
-    Ext.ux.Media.plugin.AudioEvents = Ext.extend(Ext.ux.Media.Component,{
-    
-       autoEl  : {tag:'div' },
-       
-       cls: 'x-hide-offsets',
-       
-       disableCaching : false,
-       
-       
-       audioEvents : {},
-       
-       
-       volume     : .5,
-       
-       ptype      : 'audioevents',
-       
-       
-       initComponent : function(){
-          this.mediaCfg || (this.mediaCfg = {
-              mediaType : 'WAV',
-              start     : true,
-              url       : ''
-          });
-          Ext.ux.Media.plugin.AudioEvents.superclass.initComponent.apply(this,arguments);
-          
-          this.addEvents(
-          
-           'beforeaudio');
-           
-           this.setVolume(this.volume);
-       },
-       
-       
-       init : function( target ){
-        
-            this.rendered || this.render(Ext.getBody());
-            
-            if(target.dom || target.ctype){
-                var plugin = this;
-                Ext.iterate(this.audioEvents || {}, 
-                 function(event){
-                   
-                    if(target.events && !target.events[event]) return;
-                    
-                    
-                    Ext.applyIf(target, {
-                       audioPlugin : plugin,
-                       audioListeners : {},
-                       
-                       
-                       removeAudioListener : function(audioEvent){
-                          if(audioEvent && this.audioListeners[audioEvent]){ 
-                               this.removeListener && 
-                                 this.removeListener(audioEvent, this.audioListeners[audioEvent], this);
-                               delete this.audioListeners[audioEvent];
-                          }
-                       },
-                       
-                       removeAudioListeners : function(){
-                          var c = [];
-                          Ext.iterate(this.audioListeners, function(audioEvent){c.push(audioEvent)});
-                          Ext.iterate(c, this.removeAudioListener, this);
-                       },
-                       
-                       addAudioListener : function(audioEvent){
-                           if(this.audioListeners[audioEvent]){
-                               this.removeAudioListener(audioEvent);
-                           }
-                           this.addListener && 
-                             this.addListener (audioEvent, 
-                               this.audioListeners[audioEvent] = function(){
-                               this.audioPlugin.onEvent(this, audioEvent);
-                             }, this);
-                        
-                       } ,
-
-                       enableAudio : function(){
-                          this.audioPlugin && this.audioPlugin.enable();
-                       },
-                       
-                       disableAudio : function(){
-                          this.audioPlugin && this.audioPlugin.disable();
-                       },
-                       
-                       setVolume : function(volume){
-                          this.audioPlugin && this.audioPlugin.setVolume(volume);
-                       }
-                    });
-                    
-                    target.addAudioListener(event);
-                    
-                },this);
-            }
-       },
-       
-       
-       setVolume   : function(volume){
-            var AO = this.audioObject, v = Math.max(Math.min(parseFloat(volume)||0, 1),0);
-            this.mediaCfg && (this.mediaCfg.volume = v*100);
-            this.volume = v;
-            AO && (AO.volume = v);
-            return this;
-       },
-       
-       
-       onEvent : function(comp, event){
-           if(!this.disabled && this.audioEvents && this.audioEvents[event]){
-              if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
-                  this.mediaCfg.url = this.audioEvents[event];
-
-                  if(Ext.capabilities.hasAudio && Ext.capabilities.hasAudio.object){  //HTML5 Audio support?
-                        this.audioObject && this.audioObject.stop && this.audioObject.stop();
-                        if(this.audioObject = new Audio(this.mediaCfg.url || '')){
-                            this.setVolume(this.volume);
-                            this.audioObject.play && this.audioObject.play();
-                        }
-                  } else {
-                        var O = this.getInterface();
-                        if(O){ 
-                            if(O.object){  //IE ActiveX
-                                O= O.object;
-	                            ('Open' in O) && O.Open(this.mediaCfg.url || '');
-	                            ('Play' in O) && O.Play();
-                            }else {  //All Others - just rerender the tag
-                                this.refreshMedia();      
-                            }
-                            
-                        }
-                  }
-              }
-              
-           }
-       }
-    
-    });
-    
-    Ext.preg && Ext.preg('audioevents', Ext.ux.Media.plugin.AudioEvents);
-
+   
     Ext.onReady(function(){
-        
-	    
-        if(typeof Ext.capabilities.hasAudio == 'undefined'){
-	        var aTag = !!document.createElement('audio').canPlayType,
-	            aAudio = window.Audio ? new Audio('') : {},
-	            mime,
-	            chk,
-	            mimes = {
-	                    mp3 : 'audio/mpeg', //mp3
-	                    ogg : 'audio/ogg',  //Ogg Vorbis
-	                    wav : 'audio/x-wav', //wav 
-	                    basic : 'audio/basic', //au, snd
-	                    aif  : 'audio/x-aiff' //aif, aifc, aiff
-	                };
-	                
-            var caps = Ext.capabilities.hasAudio = (aTag || ('canPlayType' in aAudio) ? 
-                { tag : aTag, object : ('play' in aAudio)} : false);
-                
-            if(caps && ('canPlayType' in aAudio)){
-               for (chk in mimes){ 
-                    caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
-                }
-            } 
-        }        
         
         //Generate CSS Rules if not defined in markup
         var CSS = Ext.util.CSS, rules=[];
