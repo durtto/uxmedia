@@ -6,6 +6,100 @@
  * http://licensing.theactivegroup.com
  */
 
+
+
+    
+    Ext.ux.IntelliMask = function(el, config){
+
+        Ext.apply(this, config || {msg : this.msg});
+        this.el = Ext.get(el);
+
+    };
+
+    Ext.ux.IntelliMask.prototype = {
+
+        
+        msg : 'Loading...',
+        
+        msgCls : 'x-mask-loading',
+
+
+        
+        zIndex : null,
+
+        
+        disabled: false,
+
+        
+        active: false,
+
+        
+        autoHide: false,
+
+        
+        disable : function(){
+           this.disabled = true;
+        },
+
+        
+        enable : function(){
+            this.disabled = false;
+        },
+
+        
+        show: function(msg, msgCls, fn, fnDelay ){
+
+            var opt={}, autoHide = this.autoHide, mask, maskMsg;
+            fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
+
+            if(Ext.isObject(msg)){
+                opt = msg;
+                msg = opt.msg;
+                msgCls = opt.msgCls;
+                fn = opt.fn;
+                autoHide = typeof opt.autoHide != 'undefined' ?  opt.autoHide : autoHide;
+                fnDelay = opt.fnDelay || fnDelay ;
+            }
+            if(!this.active && !this.disabled && this.el){
+                msg = msg || this.msg;
+                msgCls = msgCls || this.msgCls;
+                mask = this.el.mask(msg, msgCls);
+                
+                if(this.active = !!mask){
+                    maskMsg = this.el.child('.'+ msgCls);
+                    if(this.zIndex){
+                        mask.setStyle("z-index", this.zIndex);
+                        if(maskMsg){
+                            maskMsg.setStyle("z-index", this.zIndex+1);
+                        }
+                    }
+                }
+            } else {fnDelay = 0;}
+
+            //passed function is called regardless of the mask state.
+            if(typeof fn === 'function'){
+                fn.defer(fnDelay ,opt.scope || null);
+            } else { fnDelay = 0; }
+
+            if(autoHide && (autoHide = parseInt(autoHide , 10)||2000)){
+                this.hide.defer(autoHide+(fnDelay ||0),this );
+            }
+
+            return this.active? {mask: mask , msgEl: maskMsg } : null;
+        },
+
+        
+        hide: function(){
+            this.el && this.el.unmask();
+            this.active = false;
+            return this;
+        },
+
+        // private
+        destroy : function(){this.hide(); this.el = null; }
+     };
+
+     if (Ext.provide) { Ext.provide('uxmask');}
  
 
  Ext.namespace('Ext.ux.plugin');
@@ -431,9 +525,11 @@
          
          setMask  : function(el) {
              var mm;
-             if((mm = this.mediaMask)){
+             if(Ext.ux.IntelliMask && (mm = this.mediaMask)){
                     mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,Ext.isObject(mm) ? mm : {msg : mm}));
                     mm.el.addClass('x-media-mask');
+             }else{
+                 this.mediaMask = false;
              }
 
          },
@@ -659,7 +755,7 @@
         mediaClass    : Ext.ux.Media,
         constructor   : function(config){
           //Inherit the ux.Media class
-          Ext.apply(this , config, this.mediaClass.prototype );
+          Ext.apply(this , this.mediaClass.prototype );
           ux.Component.superclass.constructor.apply(this, arguments);
         },
         
@@ -766,7 +862,7 @@
 
         
         constructor   : function(){
-          Ext.applyIf(this , this.mediaClass.prototype );
+          Ext.apply(this , this.mediaClass.prototype );
           ux.Window.superclass.constructor.apply(this, arguments);
         },
 
@@ -886,103 +982,6 @@
     });
 
     Ext.ux.Media.prototype.elementClass  =  Ext.ux.Media.Element;
-
-    
-    Ext.ux.IntelliMask = function(el, config){
-
-        Ext.apply(this, config || {msg : this.msg});
-        this.el = Ext.get(el);
-
-    };
-
-    Ext.ux.IntelliMask.prototype = {
-
-        
-
-         removeMask  : false,
-
-        
-        msg : 'Loading Media...',
-        
-        msgCls : 'x-mask-loading',
-
-
-        
-        zIndex : null,
-
-        
-        disabled: false,
-
-        
-        active: false,
-
-        
-        autoHide: false,
-
-        
-        disable : function(){
-           this.disabled = true;
-        },
-
-        
-        enable : function(){
-            this.disabled = false;
-        },
-
-        
-        show: function(msg, msgCls, fn, fnDelay ){
-
-            var opt={}, autoHide = this.autoHide;
-            fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
-
-            if(Ext.isObject(msg)){
-                opt = msg;
-                msg = opt.msg;
-                msgCls = opt.msgCls;
-                fn = opt.fn;
-                autoHide = typeof opt.autoHide != 'undefined' ?  opt.autoHide : autoHide;
-                fnDelay = opt.fnDelay || fnDelay ;
-            }
-            if(!this.active && !this.disabled && this.el){
-                var mask = this.el.mask(msg || this.msg, msgCls || this.msgCls);
-
-                this.active = !!this.el._mask;
-                if(this.active){
-                    if(this.zIndex){
-                        this.el._mask.setStyle("z-index", this.zIndex);
-                        if(this.el._maskMsg){
-                            this.el._maskMsg.setStyle("z-index", this.zIndex+1);
-                        }
-                    }
-                }
-            } else {fnDelay = 0;}
-
-            //passed function is called regardless of the mask state.
-            if(typeof fn === 'function'){
-                fn.defer(fnDelay ,opt.scope || null);
-            } else { fnDelay = 0; }
-
-            if(autoHide && (autoHide = parseInt(autoHide , 10)||2000)){
-                this.hide.defer(autoHide+(fnDelay ||0),this );
-            }
-
-            return this.active? {mask: this.el._mask , maskMsg: this.el._maskMsg} : null;
-        },
-
-        
-        hide: function(remove){
-            if(this.el){
-                this.el.unmask(remove || this.removeMask);
-            }
-            this.active = false;
-            return this;
-        },
-
-        // private
-        destroy : function(){this.hide(true); this.el = null; }
-     };
-
-
 
 
 Ext.ux.Media.mediaTypes = {
@@ -1532,6 +1531,8 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
     Ext.ux.Media.Flash = Ext.extend( Ext.ux.Media, {
 
         varsName       :'flashVars',
+        
+        requiredVersion : 8,
 
        
         externalsNamespace :  null,
@@ -1581,7 +1582,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
             ux.Flash.superclass.initMedia.call(this);
 
             var mc = Ext.apply({}, this.mediaCfg||{});
-            var requiredVersion = (this.requiredVersion = mc.requiredVersion || this.requiredVersion|| false ) ;
+            var requiredVersion = (mc.requiredVersion || this.requiredVersion ) ;
             var hasFlash  = !!(this.playerVersion = this.detectFlashVersion());
             var hasRequired = hasFlash && (requiredVersion?this.assertVersion(requiredVersion):true);
 
@@ -2265,7 +2266,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
     
     Ext.apply(ux.Flex, {
         onFlexBridge : function(bridgeId){
-            //console.log(arguments);
+            
             var c, d = Ext.get(Ext.isArray(bridgeId) ? bridgeId[0]: bridgeId);
             if(d && (c = d.ownerCt)){
                 c.onFlexInit && c.onFlexInit();
@@ -2312,10 +2313,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
         RECURSION_ERROR: "You are trying to call recursively into the Flash Player which is not allowed. In most cases the JavaScript setTimeout function, can be used as a workaround."
     });
 
-    window.FABridge__bridgeInitialized =
-      //typeof (window.FABridge__bridgeInitialized) === 'function' ?
-      //  window.FABridge__bridgeInitialized.createInterceptor(ux.Flex.onFlexBridge):
-            ux.Flex.onFlexBridge;
+    window.FABridge__bridgeInitialized = ux.Flex.onFlexBridge;
 
     window.FABridge__invokeJSFunction = function(args){
 

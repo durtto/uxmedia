@@ -1,4 +1,4 @@
-/* @copyright 2007-2009, Active Group, Inc. All rights reserved.*/
+/* @copyright 2007-2010, Active Group, Inc. All rights reserved.*/
  /**
   * @class Ext.ux.Chart.FlashAdapter
   * @extends Ext.ux.Media.Flash
@@ -29,7 +29,7 @@
        /**
         * @cfg {Mixed} unsupportedText Text Markup/DOMHelper config displayed when the Flash Plugin is not available
         */
-       unsupportedText : {cn:['The Adobe Flash Player{0}is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]},
+       unsupportedText : {cn:['The Adobe Flash Player {0} is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]},
 
        /**
         * @cfg {String} chartURL Url of the Flash Chart object.
@@ -132,7 +132,6 @@
                           params  : {
                               allowscriptaccess : '@scripting',
                               wmode     :'opaque',
-                              scale     :'exactfit',
                               scale       : null,
                               salign      : null
                            }
@@ -318,11 +317,11 @@
 
            if(typeof url === "object"){ // must be config object
                cfg = Ext.apply({},url);
-               dataUrl = cfg.url;
+               dataUrl = cfg.url || this.dataURL;
                params = params || cfg.params;
                callback = callback || cfg.callback;
                callerScope = scope || cfg.scope;
-               method = cfg.method || params ? 'POST': 'GET';
+               method = String(cfg.method || (params ? 'POST': 'GET')).toUpperCase();
                disableCaching = cfg.disableCaching ;
                timeout = cfg.timeout || 30;
            } else {
@@ -331,8 +330,7 @@
 
            //resolve Function if supplied
            if(!(dataUrl = this.assert(dataUrl, null)) ){return null;}
-
-           method = method || (params ? "POST" : "GET");
+           
            if(method === "GET"){
                dataUrl= this.prepareURL(dataUrl, disableCaching );
            }
@@ -350,7 +348,9 @@
                scope: this,
                //Actual response is managed here
                callback: function(options, success, response ) {
-                   o.loadData = success;
+                   if(!success){
+                      o.loadData = false;
+                   }
                    if(callback){
                        o.loadData = callback.call(callerScope , this, success, response, options )!== false;
                    }
@@ -392,7 +392,9 @@
 
           //loadMask reserved for data loading operations only
           //see: @cfg:mediaMask for Chart object masking
-          var lm=this.loadMask;
+          
+          this.loadMask = Ext.ux.IntelliMask ? this.loadMask : false;  
+          var lm = this.loadMask;
           if(lm && !lm.disabled){
               lm.el || (this.loadMask = lm = new Ext.ux.IntelliMask( this[this.mediaEl] || ct, 
                  Ext.isObject(lm) ? lm : {msg : lm}));

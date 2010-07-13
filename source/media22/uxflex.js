@@ -1,8 +1,8 @@
 /* global Ext */
 /* ux.Media.Flex
- * version  1.0 RC1.02
+ * version  1.1 
  * @author Doug Hendricks. doug[always-At]theactivegroup.com
- * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+ * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -20,10 +20,10 @@
  Notes: the <embed> tag is NOT used(or necessary) in this implementation
 
  Version:
-        1.0 RC1.02
+        1.1
 
  Ext Component Implementation of the FAbridge (Flex/ActionScript -> Javascript bridge)
- FABridge.js is NOT required.
+ Adobe's FABridge.js is NOT required.
 
     mediaCfg: {Object}
          {
@@ -119,7 +119,7 @@
      */
     Ext.apply(ux.Flex, {
         onFlexBridge : function(bridgeId){
-            //console.log(arguments);
+            
             var c, d = Ext.get(Ext.isArray(bridgeId) ? bridgeId[0]: bridgeId);
             if(d && (c = d.ownerCt)){
                 c.onFlexInit && c.onFlexInit();
@@ -178,10 +178,7 @@
         RECURSION_ERROR: "You are trying to call recursively into the Flash Player which is not allowed. In most cases the JavaScript setTimeout function, can be used as a workaround."
     });
 
-    window.FABridge__bridgeInitialized =
-      //typeof (window.FABridge__bridgeInitialized) === 'function' ?
-      //  window.FABridge__bridgeInitialized.createInterceptor(ux.Flex.onFlexBridge):
-            ux.Flex.onFlexBridge;
+    window.FABridge__bridgeInitialized = ux.Flex.onFlexBridge;
 
     window.FABridge__invokeJSFunction = function(args){
 

@@ -6,6 +6,100 @@
  * http://licensing.theactivegroup.com
  */
 
+
+
+    
+    Ext.ux.IntelliMask = function(el, config){
+
+        Ext.apply(this, config || {msg : this.msg});
+        this.el = Ext.get(el);
+
+    };
+
+    Ext.ux.IntelliMask.prototype = {
+
+        
+        msg : 'Loading...',
+        
+        msgCls : 'x-mask-loading',
+
+
+        
+        zIndex : null,
+
+        
+        disabled: false,
+
+        
+        active: false,
+
+        
+        autoHide: false,
+
+        
+        disable : function(){
+           this.disabled = true;
+        },
+
+        
+        enable : function(){
+            this.disabled = false;
+        },
+
+        
+        show: function(msg, msgCls, fn, fnDelay ){
+
+            var opt={}, autoHide = this.autoHide, mask, maskMsg;
+            fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
+
+            if(Ext.isObject(msg)){
+                opt = msg;
+                msg = opt.msg;
+                msgCls = opt.msgCls;
+                fn = opt.fn;
+                autoHide = typeof opt.autoHide != 'undefined' ?  opt.autoHide : autoHide;
+                fnDelay = opt.fnDelay || fnDelay ;
+            }
+            if(!this.active && !this.disabled && this.el){
+                msg = msg || this.msg;
+                msgCls = msgCls || this.msgCls;
+                mask = this.el.mask(msg, msgCls);
+                
+                if(this.active = !!mask){
+                    maskMsg = this.el.child('.'+ msgCls);
+                    if(this.zIndex){
+                        mask.setStyle("z-index", this.zIndex);
+                        if(maskMsg){
+                            maskMsg.setStyle("z-index", this.zIndex+1);
+                        }
+                    }
+                }
+            } else {fnDelay = 0;}
+
+            //passed function is called regardless of the mask state.
+            if(typeof fn === 'function'){
+                fn.defer(fnDelay ,opt.scope || null);
+            } else { fnDelay = 0; }
+
+            if(autoHide && (autoHide = parseInt(autoHide , 10)||2000)){
+                this.hide.defer(autoHide+(fnDelay ||0),this );
+            }
+
+            return this.active? {mask: mask , msgEl: maskMsg } : null;
+        },
+
+        
+        hide: function(){
+            this.el && this.el.unmask();
+            this.active = false;
+            return this;
+        },
+
+        // private
+        destroy : function(){this.hide(); this.el = null; }
+     };
+
+     if (Ext.provide) { Ext.provide('uxmask');}
  
 
  Ext.namespace('Ext.ux.plugin');
@@ -431,9 +525,11 @@
          
          setMask  : function(el) {
              var mm;
-             if((mm = this.mediaMask)){
+             if(Ext.ux.IntelliMask && (mm = this.mediaMask)){
                     mm.el || (mm = this.mediaMask = new Ext.ux.IntelliMask(el,Ext.isObject(mm) ? mm : {msg : mm}));
                     mm.el.addClass('x-media-mask');
+             }else{
+                 this.mediaMask = false;
              }
 
          },
@@ -511,11 +607,10 @@
                   m.height = this.autoHeight ? null : autoSizeEl.getHeight(true);
                   m.width  = this.autoWidth ? null : autoSizeEl.getWidth(true);
                 }
-
-             }
-             this.assert(m.height,height);
-             this.assert(m.width ,width);
-             mediaCfg = m;
+	             this.assert(m.height,height);
+	             this.assert(m.width ,width);
+	             mediaCfg = m;
+            }
 
           },
 
@@ -660,7 +755,7 @@
         mediaClass    : Ext.ux.Media,
         constructor   : function(config){
           //Inherit the ux.Media class
-          Ext.apply(this , config, this.mediaClass.prototype );
+          Ext.apply(this , this.mediaClass.prototype );
           ux.Component.superclass.constructor.apply(this, arguments);
         },
         
@@ -767,7 +862,7 @@
 
         
         constructor   : function(){
-          Ext.applyIf(this , this.mediaClass.prototype );
+          Ext.apply(this , this.mediaClass.prototype );
           ux.Window.superclass.constructor.apply(this, arguments);
         },
 
@@ -813,212 +908,8 @@
     });
 
     Ext.reg('mediawindow', ux.Window);
-
-    Ext.ns('Ext.capabilities');
-    Ext.ns('Ext.ux.Media.plugin');
-    
-                
-     Ext.iterate || Ext.apply (Ext, {
-        iterate : function(obj, fn, scope){
-            if(Ext.isEmpty(obj)){
-                return;
-            }
-            if(Ext.isIterable(obj)){
-                Ext.each(obj, fn, scope);
-                return;
-            }else if(Ext.isObject(obj)){
-                for(var prop in obj){
-                    if(obj.hasOwnProperty(prop)){
-                        if(fn.call(scope || obj, prop, obj[prop], obj) === false){
-                            return;
-                        };
-                    }
-                }
-            }
-        },
-        isIterable : function(v){
-            //check for array or arguments
-            if(Ext.isArray(v) || v.callee){
-                return true;
-            }
-            //check for node list type
-            if(/NodeList|HTMLCollection/.test(toString.call(v))){
-                return true;
-            }
-            //NodeList has an item and length property
-            //IXMLDOMNodeList has nextNode method, needs to be checked first.
-            return ((v.nextNode || v.item) && Ext.isNumber(v.length));
-        },
-        
-        isObject : function(obj){
-            return !!obj && toString.apply(obj) == '[object Object]';
-        }
-     });
-    
-     
-    Ext.ux.Media.plugin.AudioEvents = Ext.extend(Ext.ux.Media.Component,{
-    
-       autoEl  : {tag:'div' },
-       
-       cls: 'x-hide-offsets',
-       
-       disableCaching : false,
-       
-       
-       audioEvents : {},
-       
-       
-       volume     : .5,
-       
-       ptype      : 'audioevents',
-       
-       
-       initComponent : function(){
-          this.mediaCfg || (this.mediaCfg = {
-              mediaType : 'WAV',
-              start     : true,
-              url       : ''
-          });
-          Ext.ux.Media.plugin.AudioEvents.superclass.initComponent.apply(this,arguments);
-          
-          this.addEvents(
-          
-           'beforeaudio');
-           
-           this.setVolume(this.volume);
-       },
-       
-       
-       init : function( target ){
-        
-            this.rendered || this.render(Ext.getBody());
-            
-            if(target.dom || target.ctype){
-                var plugin = this;
-                Ext.iterate(this.audioEvents || {}, 
-                 function(event){
-                   
-                    if(target.events && !target.events[event]) return;
-                    
-                    
-                    Ext.applyIf(target, {
-                       audioPlugin : plugin,
-                       audioListeners : {},
-                       
-                       
-                       removeAudioListener : function(audioEvent){
-                          if(audioEvent && this.audioListeners[audioEvent]){ 
-                               this.removeListener && 
-                                 this.removeListener(audioEvent, this.audioListeners[audioEvent], this);
-                               delete this.audioListeners[audioEvent];
-                          }
-                       },
-                       
-                       removeAudioListeners : function(){
-                          var c = [];
-                          Ext.iterate(this.audioListeners, function(audioEvent){c.push(audioEvent)});
-                          Ext.iterate(c, this.removeAudioListener, this);
-                       },
-                       
-                       addAudioListener : function(audioEvent){
-                           if(this.audioListeners[audioEvent]){
-                               this.removeAudioListener(audioEvent);
-                           }
-                           this.addListener && 
-                             this.addListener (audioEvent, 
-                               this.audioListeners[audioEvent] = function(){
-                               this.audioPlugin.onEvent(this, audioEvent);
-                             }, this);
-                        
-                       } ,
-
-                       enableAudio : function(){
-                          this.audioPlugin && this.audioPlugin.enable();
-                       },
-                       
-                       disableAudio : function(){
-                          this.audioPlugin && this.audioPlugin.disable();
-                       },
-                       
-                       setVolume : function(volume){
-                          this.audioPlugin && this.audioPlugin.setVolume(volume);
-                       }
-                    });
-                    
-                    target.addAudioListener(event);
-                    
-                },this);
-            }
-       },
-       
-       
-       setVolume   : function(volume){
-            var AO = this.audioObject, v = Math.max(Math.min(parseFloat(volume)||0, 1),0);
-            this.mediaCfg && (this.mediaCfg.volume = v*100);
-            this.volume = v;
-            AO && (AO.volume = v);
-            return this;
-       },
-       
-       
-       onEvent : function(comp, event){
-           if(!this.disabled && this.audioEvents && this.audioEvents[event]){
-              if(this.fireEvent('beforeaudio',this, comp, event) !== false ){
-                  this.mediaCfg.url = this.audioEvents[event];
-
-                  if(Ext.capabilities.hasAudio && Ext.capabilities.hasAudio.object){  //HTML5 Audio support?
-                        this.audioObject && this.audioObject.stop && this.audioObject.stop();
-                        if(this.audioObject = new Audio(this.mediaCfg.url || '')){
-                            this.setVolume(this.volume);
-                            this.audioObject.play && this.audioObject.play();
-                        }
-                  } else {
-                        var O = this.getInterface();
-                        if(O){ 
-                            if(O.object){  //IE ActiveX
-                                O= O.object;
-	                            ('Open' in O) && O.Open(this.mediaCfg.url || '');
-	                            ('Play' in O) && O.Play();
-                            }else {  //All Others - just rerender the tag
-                                this.refreshMedia();      
-                            }
-                            
-                        }
-                  }
-              }
-              
-           }
-       }
-    
-    });
-    
-    Ext.preg && Ext.preg('audioevents', Ext.ux.Media.plugin.AudioEvents);
-
+   
     Ext.onReady(function(){
-        
-	    
-        if(typeof Ext.capabilities.hasAudio == 'undefined'){
-	        var aTag = !!document.createElement('audio').canPlayType,
-	            aAudio = window.Audio ? new Audio('') : {},
-	            mime,
-	            chk,
-	            mimes = {
-	                    mp3 : 'audio/mpeg', //mp3
-	                    ogg : 'audio/ogg',  //Ogg Vorbis
-	                    wav : 'audio/x-wav', //wav 
-	                    basic : 'audio/basic', //au, snd
-	                    aif  : 'audio/x-aiff' //aif, aifc, aiff
-	                };
-	                
-            var caps = Ext.capabilities.hasAudio = (aTag || ('canPlayType' in aAudio) ? 
-                { tag : aTag, object : ('play' in aAudio)} : false);
-                
-            if(caps && ('canPlayType' in aAudio)){
-               for (chk in mimes){ 
-                    caps[chk] = (mime = aAudio.canPlayType(mimes[chk])) != 'no' && (mime != '');
-                }
-            } 
-        }        
         
         //Generate CSS Rules if not defined in markup
         var CSS = Ext.util.CSS, rules=[];
@@ -1091,103 +982,6 @@
     });
 
     Ext.ux.Media.prototype.elementClass  =  Ext.ux.Media.Element;
-
-    
-    Ext.ux.IntelliMask = function(el, config){
-
-        Ext.apply(this, config || {msg : this.msg});
-        this.el = Ext.get(el);
-
-    };
-
-    Ext.ux.IntelliMask.prototype = {
-
-        
-
-         removeMask  : false,
-
-        
-        msg : 'Loading Media...',
-        
-        msgCls : 'x-mask-loading',
-
-
-        
-        zIndex : null,
-
-        
-        disabled: false,
-
-        
-        active: false,
-
-        
-        autoHide: false,
-
-        
-        disable : function(){
-           this.disabled = true;
-        },
-
-        
-        enable : function(){
-            this.disabled = false;
-        },
-
-        
-        show: function(msg, msgCls, fn, fnDelay ){
-
-            var opt={}, autoHide = this.autoHide;
-            fnDelay = parseInt(fnDelay,10) || 20; //ms delay to allow mask to quiesce if fn specified
-
-            if(Ext.isObject(msg)){
-                opt = msg;
-                msg = opt.msg;
-                msgCls = opt.msgCls;
-                fn = opt.fn;
-                autoHide = typeof opt.autoHide != 'undefined' ?  opt.autoHide : autoHide;
-                fnDelay = opt.fnDelay || fnDelay ;
-            }
-            if(!this.active && !this.disabled && this.el){
-                var mask = this.el.mask(msg || this.msg, msgCls || this.msgCls);
-
-                this.active = !!this.el._mask;
-                if(this.active){
-                    if(this.zIndex){
-                        this.el._mask.setStyle("z-index", this.zIndex);
-                        if(this.el._maskMsg){
-                            this.el._maskMsg.setStyle("z-index", this.zIndex+1);
-                        }
-                    }
-                }
-            } else {fnDelay = 0;}
-
-            //passed function is called regardless of the mask state.
-            if(typeof fn === 'function'){
-                fn.defer(fnDelay ,opt.scope || null);
-            } else { fnDelay = 0; }
-
-            if(autoHide && (autoHide = parseInt(autoHide , 10)||2000)){
-                this.hide.defer(autoHide+(fnDelay ||0),this );
-            }
-
-            return this.active? {mask: this.el._mask , maskMsg: this.el._maskMsg} : null;
-        },
-
-        
-        hide: function(remove){
-            if(this.el){
-                this.el.unmask(remove || this.removeMask);
-            }
-            this.active = false;
-            return this;
-        },
-
-        // private
-        destroy : function(){this.hide(true); this.el = null; }
-     };
-
-
 
 
 Ext.ux.Media.mediaTypes = {
@@ -1737,6 +1531,8 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
     Ext.ux.Media.Flash = Ext.extend( Ext.ux.Media, {
 
         varsName       :'flashVars',
+        
+        requiredVersion : 8,
 
        
         externalsNamespace :  null,
@@ -1786,7 +1582,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
             ux.Flash.superclass.initMedia.call(this);
 
             var mc = Ext.apply({}, this.mediaCfg||{});
-            var requiredVersion = (this.requiredVersion = mc.requiredVersion || this.requiredVersion|| false ) ;
+            var requiredVersion = (mc.requiredVersion || this.requiredVersion ) ;
             var hasFlash  = !!(this.playerVersion = this.detectFlashVersion());
             var hasRequired = hasFlash && (requiredVersion?this.assertVersion(requiredVersion):true);
 
@@ -2432,7 +2228,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
 
 
        
-       unsupportedText : {cn:['The Adobe Flash Player{0}is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]},
+       unsupportedText : {cn:['The Adobe Flash Player {0} is required.',{tag:'br'},{tag:'a',cn:[{tag:'img',src:'http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif'}],href:'http://www.adobe.com/shockwave/download/download.cgi?P1_Prod_Version=ShockwaveFlash',target:'_flash'}]},
 
        
        chartURL        : null,
@@ -2486,7 +2282,6 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
                           params  : {
                               allowscriptaccess : '@scripting',
                               wmode     :'opaque',
-                              scale     :'exactfit',
                               scale       : null,
                               salign      : null
                            }
@@ -2585,11 +2380,11 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
 
            if(typeof url === "object"){ // must be config object
                cfg = Ext.apply({},url);
-               dataUrl = cfg.url;
+               dataUrl = cfg.url || this.dataURL;
                params = params || cfg.params;
                callback = callback || cfg.callback;
                callerScope = scope || cfg.scope;
-               method = cfg.method || params ? 'POST': 'GET';
+               method = String(cfg.method || (params ? 'POST': 'GET')).toUpperCase();
                disableCaching = cfg.disableCaching ;
                timeout = cfg.timeout || 30;
            } else {
@@ -2598,8 +2393,7 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
 
            //resolve Function if supplied
            if(!(dataUrl = this.assert(dataUrl, null)) ){return null;}
-
-           method = method || (params ? "POST" : "GET");
+           
            if(method === "GET"){
                dataUrl= this.prepareURL(dataUrl, disableCaching );
            }
@@ -2617,7 +2411,9 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
                scope: this,
                //Actual response is managed here
                callback: function(options, success, response ) {
-                   o.loadData = success;
+                   if(!success){
+                      o.loadData = false;
+                   }
                    if(callback){
                        o.loadData = callback.call(callerScope , this, success, response, options )!== false;
                    }
@@ -2654,7 +2450,9 @@ Ext.ux.MediaWindow    = Ext.ux.Media.Window;
 
           //loadMask reserved for data loading operations only
           //see: @cfg:mediaMask for Chart object masking
-          var lm=this.loadMask;
+          
+          this.loadMask = Ext.ux.IntelliMask ? this.loadMask : false;  
+          var lm = this.loadMask;
           if(lm && !lm.disabled){
               lm.el || (this.loadMask = lm = new Ext.ux.IntelliMask( this[this.mediaEl] || ct, 
                  Ext.isObject(lm) ? lm : {msg : lm}));
