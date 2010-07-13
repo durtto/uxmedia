@@ -80,6 +80,8 @@
     Ext.ux.Media.Flash = Ext.extend( Ext.ux.Media, {
 
         varsName       :'flashVars',
+        
+        requiredVersion : 8,
 
        /**
         *
@@ -141,7 +143,7 @@
             ux.Flash.superclass.initMedia.call(this);
 
             var mc = Ext.apply({}, this.mediaCfg||{});
-            var requiredVersion = (this.requiredVersion = mc.requiredVersion || this.requiredVersion|| false ) ;
+            var requiredVersion = (mc.requiredVersion || this.requiredVersion ) ;
             var hasFlash  = !!(this.playerVersion = this.detectFlashVersion());
             var hasRequired = hasFlash && (requiredVersion?this.assertVersion(requiredVersion):true);
 

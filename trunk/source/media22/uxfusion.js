@@ -1,9 +1,9 @@
 /* global Ext */
 /*
  * @class Ext.ux.Chart.Fusion
- * Version:  2.1
+ * Version:  2.2
  * Author: Doug Hendricks. doug[always-At]theactivegroup.com
- * Copyright 2007-2009, Active Group, Inc.  All rights reserved.
+ * Copyright 2007-2010, Active Group, Inc.  All rights reserved.
  *
  ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
@@ -85,7 +85,7 @@
        /**
         * @cfg {String|Float} requiredVersion The required Flash version necessary to support the Chart object.
         * @memberof Ext.ux.Chart.Fusion.Adapter
-        * @default 18
+        * @default 8
         */
        requiredVersion : 8,
 
@@ -183,7 +183,7 @@
                           params  : {
                               wmode     :'opaque',
                               salign      : null
-                               },
+                             },
                           boundExternals :
                                 ['print',
                                 'saveAsImage',
@@ -372,7 +372,6 @@
      * The following callbacks-to-events are only supported by Fusion Charts 3.1 or higher.
      */
     var dispatchEvent = function(name, id){
-        
         var c, d = Ext.get(id);
         if(d && (c = d.ownerCt)){
            c.fireEvent.apply(c, [name, c, c.getInterface()].concat(Array.prototype.slice.call(arguments,2)));
@@ -383,11 +382,9 @@
     //Bind Fusion callbacks to an Ext.Event for the corresponding chart.
     Ext.each(['FC_DataLoaded', 'FC_DataLoadError' ,
         'FC_NoDataToDisplay','FC_DataXMLInvalid','FC_Exported','FC_ExportReady'],
-
       function(fnName){
         var cb = dispatchEvent.createDelegate(null,[fnName.toLowerCase().replace(/^FC_/i,'')],0);
         window[fnName] = typeof window[fnName] == 'function' ? window[fnName].createInterceptor(cb): cb ;
-
      });
 
 
@@ -473,6 +470,83 @@
         });
 
     Ext.reg('fusionwindow', Ext.ux.Chart.Fusion.Window);
+    
+    Ext.reg('fusionexporter',
+      Ext.ux.Chart.Fusion.ExportComponent = Ext.extend(Ext.ux.Media.Flash.Component, {
+        
+	        ctype : 'Ext.ux.Chart.Fusion.Exporter' ,
+	        mediaClass  : Ext.ux.Chart.Fusion.Exporter = Ext.extend( Ext.ux.Media.Flash , {
+	        
+		        /**
+		        * @cfg {String|Float} requiredVersion The required Flash version necessary to support the Fusion Exporter.
+		        * @memberof Ext.ux.Chart.Fusion.Exporter
+		        * @default 10
+		        */
+		        requiredVersion : 10,
+		
+		        /** @private */
+		        getMediaType: function(){
+		             var vName = this.varsName,
+		                mt = Ext.apply({},{
+		                 start    : true,
+		                  controls : false,
+		                  autoSize : false,
+		                  scripting : 'always',
+		                  cls     :'x-media x-media-swf x-fusion-export'
+		             }, this.mediaType);
+		
+		             mt.params[vName] || (mt.params[vName]={});
+		             Ext.apply(mt.params[vName],{
+		                DOMId : '@id',
+		                debugMode : 0,
+                        chartWidth : 0,
+                        chartHeight : 0,
+	                    width   : '@width',
+	                    height  : '@height',
+		                registerWithJS : 0,
+		                scaleMode  : 'noScale',
+	                    dataURL    : null,
+		                lang : 'EN',
+	                    generator : 'uxMediaChartPack'
+		             });
+		             
+		             return mt;
+		        },
+		        /** @private called just prior to rendering the media
+		        * Merges mediaCfg with default Exporter mediaCfg 
+		        */
+		       onBeforeMedia: function(){
+		
+		          /* assemble a valid mediaCfg */
+		          var mc =  this.mediaCfg;
+		          var mp = mc.params||{};
+		          delete mc.params;
+		          var mv = mp[this.varsName]||{};
+		          delete mp[this.varsName];
+		
+		          //chartCfg
+		          var cCfg = Ext.apply({},this.getMediaType() || {});
+		
+		           //chart params
+		          var cp = Ext.apply({}, this.assert( cCfg.params,{}));
+		          delete cCfg.params;
+		
+		           //chart.params.flashVars
+		          var cv = Ext.apply({}, this.assert( cp[this.varsName],{}));
+		          delete cp[this.varsName];
+		
+		          mc.params = Ext.apply(mp,cp);
+		          mc.params[this.varsName] = Ext.apply(mv,cv);
+		
+		          Ext.ux.Media.Flash.superclass.onBeforeMedia.call(this);
+		
+		      }
+	        
+	      })
+        
+    }));
+
+    
 })();
 
 if (Ext.provide) { Ext.provide('uxfusion');}
